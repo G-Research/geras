@@ -1,4 +1,5 @@
 # Geras
+[![CircleCI](https://circleci.com/gh/G-Research/geras/tree/master.svg?style=svg)](https://circleci.com/gh/G-Research/geras/tree/master)
 
 The goal of this project is to make it possible to run PromQL queries on OpenTSDB using the same interface.
 
