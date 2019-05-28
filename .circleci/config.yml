@@ -1,6 +1,6 @@
 version: 2
 jobs:
-  test:
+  build:
     docker:
       - image: circleci/golang:1.12.5
     working_directory: /go/src/github.com/G-Research/geras
