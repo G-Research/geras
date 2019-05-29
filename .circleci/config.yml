@@ -1,0 +1,14 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/golang:1.12.5
+    working_directory: /go/src/github.com/G-Research/geras
+    environment:
+      GO111MODULE: 'on'
+      GOBIN: "/go/bin"
+    steps:
+      - checkout
+      - run:
+          name: Run unit tests 
+          command: go test ./pkg/... 
