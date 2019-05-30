@@ -10,5 +10,11 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Build using go modules 
+          command: go build ./...
+      - run:
+          name: Build using vendor directory
+          command: go build -mod=vendor ./... 
+      - run:
           name: Run unit tests 
           command: go test ./pkg/... 
