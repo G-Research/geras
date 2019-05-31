@@ -9,6 +9,9 @@ jobs:
       GOBIN: "/go/bin"
     steps:
       - checkout
+      - restore_cache:
+          keys:
+            - pkg-cache
       - run:
           name: Build using go modules 
           command: go build ./...
@@ -18,3 +21,7 @@ jobs:
       - run:
           name: Run unit tests 
           command: go test ./pkg/... 
+      - save_cache: 
+          key: pkg-cache
+          paths:
+            - "/go/pkg"
