@@ -1,9 +1,11 @@
 # Geras
 [![CircleCI](https://circleci.com/gh/G-Research/geras/tree/master.svg?style=svg)](https://circleci.com/gh/G-Research/geras/tree/master)
 
-The goal of this project is to make it possible to run PromQL queries on OpenTSDB using the same interface.
+The goal of this project is to make it possible to run PromQL queries on OpenTSDB.
 
-We have achieved this by providing an implementation of the [Thanos](https://github.com/improbable-eng/thanos) StoreAPI. Since Thanos's StoreAPI is designed for unified data access and is not too Prometheus specific, Geras is able to provide an implementation which proxies onto the OpenTSDB HTTP API, providing the ability to query OpenTSDB using PromQL, and even enabling unified queries over Prometheus and OpenTSDB.
+We have achieved this by providing an implementation of the [Thanos](https://github.com/improbable-eng/thanos) StoreAPI. 
+
+Since Thanos's StoreAPI is designed for unified data access and is not too Prometheus specific, Geras is able to provide an implementation which proxies onto the OpenTSDB HTTP API, providing the ability to query OpenTSDB using PromQL, and even enabling unified queries over Prometheus and OpenTSDB.
 
 ## Build
 
