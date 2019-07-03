@@ -5,7 +5,7 @@ The goal of this project is to make it possible to run PromQL queries on OpenTSD
 
 We have achieved this by providing an implementation of the [Thanos](https://github.com/improbable-eng/thanos) StoreAPI. 
 
-Since Thanos's StoreAPI is designed for unified data access and is not too Prometheus specific, Geras is able to provide an implementation which proxies onto the OpenTSDB HTTP API, providing the ability to query OpenTSDB using PromQL, and even enabling unified queries over Prometheus and OpenTSDB.
+Since Thanos's StoreAPI is designed for unified data access and is not too Prometheus specific, Geras is able to provide an implementation which proxies onto the OpenTSDB HTTP API, giving the ability to query OpenTSDB using PromQL, and even enabling unified queries over Prometheus and OpenTSDB.
 
 ## Build
 
