@@ -3,6 +3,7 @@ package store
 import (
 	"errors"
 	"os"
+	"regexp"
 	"testing"
 
 	opentsdb "github.com/bluebreezecf/opentsdb-goclient/client"
@@ -313,10 +314,11 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 
 	for _, test := range testCases {
 		store := OpenTSDBStore{
-			metricNames: test.knownMetrics,
-			logger:      log.NewJSONLogger(os.Stdout),
+			metricNames:        test.knownMetrics,
+			logger:             log.NewJSONLogger(os.Stdout),
+			allowedMetricNames: regexp.MustCompile(".*"),
 		}
-		p, err := store.composeOpenTSDBQuery(&test.req)
+		p, _, err := store.composeOpenTSDBQuery(&test.req)
 		if test.err != nil {
 			if test.err.Error() != err.Error() {
 				t.Error("not expected error")

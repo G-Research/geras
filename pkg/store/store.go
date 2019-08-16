@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"regexp"
 	"strings"
@@ -28,14 +29,15 @@ type MinimalOpenTSDBClient interface {
 }
 
 type OpenTSDBStore struct {
-	logger                log.Logger
-	openTSDBClient        MinimalOpenTSDBClient
-	metricNames           []string
-	metricsNamesLock      sync.RWMutex
-	metricRefreshInterval time.Duration
+	logger                                 log.Logger
+	openTSDBClient                         MinimalOpenTSDBClient
+	metricNames                            []string
+	metricsNamesLock                       sync.RWMutex
+	metricRefreshInterval                  time.Duration
+	allowedMetricNames, blockedMetricNames *regexp.Regexp
 }
 
-func NewOpenTSDBStore(logger log.Logger, client MinimalOpenTSDBClient, interval time.Duration) *OpenTSDBStore {
+func NewOpenTSDBStore(logger log.Logger, client MinimalOpenTSDBClient, interval time.Duration, allowedMetricNames, blockedMetricNames *regexp.Regexp) *OpenTSDBStore {
 	store := &OpenTSDBStore{
 		logger:                log.With(logger, "component", "opentsdb"),
 		openTSDBClient:        client,
@@ -77,11 +79,20 @@ func (store *OpenTSDBStore) Series(
 	req *storepb.SeriesRequest,
 	server storepb.Store_SeriesServer) error {
 	level.Debug(store.logger).Log("msg", "Series")
-	query, err := store.composeOpenTSDBQuery(req)
+	query, warnings, err := store.composeOpenTSDBQuery(req)
 	if err != nil {
 		level.Error(store.logger).Log("err", err)
 		return err
 	}
+	if len(query.Queries) == 0 {
+		return nil
+	}
+	if len(warnings) > 0 {
+		for _, warning := range warnings {
+			server.Send(storepb.NewWarnSeriesResponse(warning))
+		}
+	}
+
 	result, err := store.openTSDBClient.Query(query)
 	if err != nil {
 		level.Error(store.logger).Log("err", err)
@@ -170,7 +181,7 @@ func (store *OpenTSDBStore) getMatchingMetricNames(matcher storepb.LabelMatcher)
 	return nil, errors.New("unknown matcher type")
 }
 
-func (store *OpenTSDBStore) composeOpenTSDBQuery(req *storepb.SeriesRequest) (opentsdb.QueryParam, error) {
+func (store *OpenTSDBStore) composeOpenTSDBQuery(req *storepb.SeriesRequest) (opentsdb.QueryParam /*warnings*/, []error, error) {
 	var tagFilters []opentsdb.Filter
 	var metricNames []string
 	var err error
@@ -179,14 +190,14 @@ func (store *OpenTSDBStore) composeOpenTSDBQuery(req *storepb.SeriesRequest) (op
 			metricNames, err = store.getMatchingMetricNames(matcher)
 			if err != nil {
 				level.Info(store.logger).Log("err", err)
-				return opentsdb.QueryParam{}, err
+				return opentsdb.QueryParam{}, nil, err
 			}
 			continue
 		}
 		f, err := convertPromQLMatcherToFilter(matcher)
 		if err != nil {
 			level.Info(store.logger).Log("err", err)
-			return opentsdb.QueryParam{}, err
+			return opentsdb.QueryParam{}, nil, err
 		}
 		tagFilters = append(tagFilters, f)
 	}
@@ -195,8 +206,18 @@ func (store *OpenTSDBStore) composeOpenTSDBQuery(req *storepb.SeriesRequest) (op
 		// we do not want to do it at the moment.
 		err := errors.New("missing __name__")
 		level.Info(store.logger).Log("err", err)
-		return opentsdb.QueryParam{}, err
+		return opentsdb.QueryParam{}, nil, err
 	}
+	var warnings []error
+	metricNames, warnings, err = store.checkMetricNames(metricNames)
+	if err != nil {
+		level.Info(store.logger).Log("err", err)
+		return opentsdb.QueryParam{}, nil, err
+	}
+	if len(metricNames) == 0 {
+		return opentsdb.QueryParam{}, nil, nil
+	}
+
 	subQueries := make([]opentsdb.SubQuery, len(metricNames))
 	for i, mn := range metricNames {
 		mn = strings.Replace(mn, ":", ".", -1)
@@ -213,7 +234,36 @@ func (store *OpenTSDBStore) composeOpenTSDBQuery(req *storepb.SeriesRequest) (op
 		MsResolution: true,
 	}
 	level.Debug(store.logger).Log("tsdb-query", query.String())
-	return query, nil
+	return query, warnings, nil
+}
+
+func (store *OpenTSDBStore) checkMetricNames(metricNames []string) (allowed []string, warnings []error, err error) {
+	for _, name := range metricNames {
+		if store.blockedMetricNames != nil && store.blockedMetricNames.MatchString(name) {
+			return nil, nil, fmt.Errorf("Metric %q is blocked on Geras", name)
+		}
+	}
+	var maybeWarn []error
+	for _, name := range metricNames {
+		if !store.allowedMetricNames.MatchString(name) {
+			maybeWarn = append(maybeWarn, fmt.Errorf("%q is not allowed via Geras", name))
+			continue
+		}
+		allowed = append(allowed, name)
+	}
+	if len(maybeWarn) > 0 && len(maybeWarn) != len(metricNames) {
+		// Oddness where things are partially allowed (if nothing is allowed then
+		// this likely is a Prometheus only query and that's fine). This could be
+		// for various reasons (e.g. {__name__=~"up|tsd\.something"}, or where a
+		// regexp __name__ was used and some metrics in tsdb aren't allowed).  This
+		// is after the __name__ expansion and could be quite long, truncate it.
+		if len(maybeWarn) > 5 {
+			warnings = maybeWarn[:5]
+		} else {
+			warnings = maybeWarn
+		}
+	}
+	return allowed, warnings, nil
 }
 
 func convertOpenTSDBResultsToSeriesResponse(respI opentsdb.QueryRespItem) (*storepb.SeriesResponse, error) {

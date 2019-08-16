@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"regexp"
 	"time"
 
 	"github.com/G-Research/geras/pkg/store"
@@ -54,11 +55,28 @@ func main() {
 	openTSDBAddress := flag.String("opentsdb-address", "", "host:port")
 	refreshInterval := flag.Duration("metrics-refresh-interval", time.Minute*15,
 		"Time between metric name refreshes. Use negative duration to disable refreshes.")
+	allowedMetricNamesRE := flag.String("metrics-allowed-regexp", ".*", "Regexp of metrics to allow")
+	blockedMetricNamesRE := flag.String("metrics-blocked-regexp", "", "Regexp of metrics to block (empty disables blocking)")
 	flag.Parse()
+
 	if *openTSDBAddress == "" {
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
+	allowedMetricNames, err := regexp.Compile(*allowedMetricNamesRE)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "metrics-allowed-regexp compile failed: %v", err)
+		os.Exit(1)
+	}
+	var blockedMetricNames *regexp.Regexp
+	if len(*blockedMetricNamesRE) > 0 {
+		blockedMetricNames, err = regexp.Compile(*blockedMetricNamesRE)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "metrics-blocked-regexp compile failed: %v", err)
+			os.Exit(1)
+		}
+	}
+
 	// initialize logger
 	logger, err := NewConfiguredLogger(*logFormat, *logLevel)
 	if err != nil {
@@ -75,7 +93,7 @@ func main() {
 		os.Exit(1)
 	}
 	// create openTSDBStore and expose its api on a grpc server
-	srv := store.NewOpenTSDBStore(logger, client, *refreshInterval)
+	srv := store.NewOpenTSDBStore(logger, client, *refreshInterval, allowedMetricNames, blockedMetricNames)
 	grpcSrv := grpc.NewServer()
 	storepb.RegisterStoreServer(grpcSrv, srv)
 	l, err := net.Listen("tcp", *grpcListenAddr)
