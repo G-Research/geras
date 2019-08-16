@@ -19,36 +19,28 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// the original OpenTSDBClient has 24 methods, this interface contains only the
-// subset of them which are used
-// and its easier to write a mock for this one.
-type MinimalOpenTSDBClient interface {
-	Query(param opentsdb.QueryParam) (*opentsdb.QueryResponse, error)
-	Suggest(param opentsdb.SuggestParam) (*opentsdb.SuggestResponse, error)
-}
-
 type OpenTSDBStore struct {
 	logger                log.Logger
-	openTSDBClient        MinimalOpenTSDBClient
+	openTSDBClient        opentsdb.ClientContext
 	metricNames           []string
 	metricsNamesLock      sync.RWMutex
 	metricRefreshInterval time.Duration
 }
 
-func NewOpenTSDBStore(logger log.Logger, client MinimalOpenTSDBClient, interval time.Duration) *OpenTSDBStore {
+func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, interval time.Duration) *OpenTSDBStore {
 	store := &OpenTSDBStore{
 		logger:                log.With(logger, "component", "opentsdb"),
 		openTSDBClient:        client,
 		metricRefreshInterval: interval,
 	}
-	err := store.loadAllMetricNames()
+	err := store.loadAllMetricNames(context.TODO())
 	if err != nil {
 		level.Info(store.logger).Log("err", err)
 	}
 	if store.metricRefreshInterval >= 0 {
 		go func() {
 			for {
-				err := store.loadAllMetricNames()
+				err := store.loadAllMetricNames(context.TODO())
 				if err != nil {
 					level.Info(store.logger).Log("err", err)
 				} else {
@@ -82,7 +74,7 @@ func (store *OpenTSDBStore) Series(
 		level.Error(store.logger).Log("err", err)
 		return err
 	}
-	result, err := store.openTSDBClient.Query(query)
+	result, err := store.openTSDBClient.WithContext(server.Context()).Query(query)
 	if err != nil {
 		level.Error(store.logger).Log("err", err)
 		return err
@@ -104,7 +96,7 @@ func (store *OpenTSDBStore) Series(
 func (store *OpenTSDBStore) LabelNames(
 	ctx context.Context,
 	req *storepb.LabelNamesRequest) (*storepb.LabelNamesResponse, error) {
-	labelNames, err := store.openTSDBClient.Suggest(
+	labelNames, err := store.openTSDBClient.WithContext(ctx).Suggest(
 		opentsdb.SuggestParam{
 			Type:         "tagk",
 			Q:            "",
@@ -125,8 +117,8 @@ func (store *OpenTSDBStore) LabelValues(
 	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
-func (store *OpenTSDBStore) loadAllMetricNames() error {
-	resp, err := store.openTSDBClient.Suggest(opentsdb.SuggestParam{
+func (store *OpenTSDBStore) loadAllMetricNames(ctx context.Context) error {
+	resp, err := store.openTSDBClient.WithContext(ctx).Suggest(opentsdb.SuggestParam{
 		Type:         "metrics",
 		Q:            "",            // no restriction
 		MaxResultNum: math.MaxInt32, // all of the metric names

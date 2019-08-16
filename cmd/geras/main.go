@@ -66,7 +66,7 @@ func main() {
 		os.Exit(1)
 	}
 	// initialize openTSDB api client
-	client, err := opentsdb.NewClient(
+	client, err := opentsdb.NewClientContext(
 		config.OpenTSDBConfig{
 			OpentsdbHost: *openTSDBAddress,
 		})
