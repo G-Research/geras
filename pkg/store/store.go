@@ -130,6 +130,15 @@ func (store *OpenTSDBStore) LabelValues(
 	ctx context.Context,
 	req *storepb.LabelValuesRequest) (*storepb.LabelValuesResponse, error) {
 	level.Debug(store.logger).Log("msg", "LabelValues", "Label", req.Label)
+	if req.Label == "__name__" {
+		var pNames []string
+		for _, item := range store.metricNames {
+			pNames = append(pNames, strings.Replace(item, ".", ":", -1))
+		}
+		return &storepb.LabelValuesResponse{
+			Values: pNames,
+		}, nil
+	}
 	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
