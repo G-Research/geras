@@ -104,18 +104,26 @@ func (store *OpenTSDBStore) Series(
 func (store *OpenTSDBStore) LabelNames(
 	ctx context.Context,
 	req *storepb.LabelNamesRequest) (*storepb.LabelNamesResponse, error) {
-	labelNames, err := store.openTSDBClient.Suggest(
+	labelNames, err := store.suggestAsList(ctx, "tagk")
+	if err != nil {
+		return nil, err
+	}
+	return &storepb.LabelNamesResponse{
+		Names: labelNames,
+	}, nil
+}
+
+func (store *OpenTSDBStore) suggestAsList(ctx context.Context, t string) ([]string, error) {
+	result, err := store.openTSDBClient.Suggest(
 		opentsdb.SuggestParam{
-			Type:         "tagk",
+			Type:         t,
 			Q:            "",
 			MaxResultNum: math.MaxInt32,
 		})
 	if err != nil {
 		return nil, err
 	}
-	return &storepb.LabelNamesResponse{
-		Names: labelNames.ResultInfo,
-	}, nil
+	return result.ResultInfo, nil
 }
 
 func (store *OpenTSDBStore) LabelValues(
@@ -126,16 +134,12 @@ func (store *OpenTSDBStore) LabelValues(
 }
 
 func (store *OpenTSDBStore) loadAllMetricNames() error {
-	resp, err := store.openTSDBClient.Suggest(opentsdb.SuggestParam{
-		Type:         "metrics",
-		Q:            "",            // no restriction
-		MaxResultNum: math.MaxInt32, // all of the metric names
-	})
+	metricNames, err := store.suggestAsList(context.Background(), "metrics")
 	if err != nil {
 		return err
 	}
 	store.metricsNamesLock.Lock()
-	store.metricNames = resp.ResultInfo
+	store.metricNames = metricNames
 	store.metricsNamesLock.Unlock()
 	return nil
 }
