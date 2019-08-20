@@ -181,7 +181,7 @@ func (store *OpenTSDBStore) getMatchingMetricNames(matcher storepb.LabelMatcher)
 	return nil, errors.New("unknown matcher type")
 }
 
-func (store *OpenTSDBStore) composeOpenTSDBQuery(req *storepb.SeriesRequest) (opentsdb.QueryParam /*warnings*/, []error, error) {
+func (store *OpenTSDBStore) composeOpenTSDBQuery(req *storepb.SeriesRequest) (opentsdb.QueryParam, /*warnings*/ []error, error) {
 	var tagFilters []opentsdb.Filter
 	var metricNames []string
 	var err error

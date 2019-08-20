@@ -17,6 +17,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 		tsdbQ        *opentsdb.QueryParam
 		knownMetrics []string
 		err          error
+		allowedMetrics, blockedMetrics *regexp.Regexp
 	}{
 		{
 			knownMetrics: []string{"test.metric"},
@@ -310,14 +311,109 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 					},
 				},
 			},
-		}}
+		},
+		{
+			knownMetrics: []string{"test.metric", "other.metric"},
+			allowedMetrics: regexp.MustCompile(`test\..*`),
+			req: storepb.SeriesRequest{
+				MinTime: 0,
+				MaxTime: 100,
+				Matchers: []storepb.LabelMatcher{
+					{
+						Type:  storepb.LabelMatcher_RE,
+						Name:  "__name__",
+						Value: `(other|test)\.metric`,
+					},
+				},
+				MaxResolutionWindow:     5,
+				Aggregates:              []storepb.Aggr{storepb.Aggr_SUM},
+				PartialResponseDisabled: false,
+			},
+			tsdbQ: &opentsdb.QueryParam{
+				Start: 0,
+				End:   100,
+				Queries: []opentsdb.SubQuery{
+					{
+						Aggregator: "none",
+						Metric:     "test.metric",
+					},
+				},
+			},
+		},
+		{
+			knownMetrics: []string{"test.metric"},
+			allowedMetrics: regexp.MustCompile(`^\w+\.`),
+			req: storepb.SeriesRequest{
+				MinTime: 0,
+				MaxTime: 100,
+				Matchers: []storepb.LabelMatcher{
+					{
+						Type:  storepb.LabelMatcher_EQ,
+						Name:  "__name__",
+						Value: "up",
+					},
+				},
+				MaxResolutionWindow:     5,
+				Aggregates:              []storepb.Aggr{storepb.Aggr_SUM},
+				PartialResponseDisabled: false,
+			},
+			// All metric names filtered out
+			tsdbQ: &opentsdb.QueryParam{},
+		},
+		{
+			knownMetrics: []string{"bad.metric"},
+			blockedMetrics: regexp.MustCompile(`bad`),
+			req: storepb.SeriesRequest{
+				MinTime: 0,
+				MaxTime: 100,
+				Matchers: []storepb.LabelMatcher{
+					{
+						Type:  storepb.LabelMatcher_EQ,
+						Name:  "__name__",
+						Value: "bad.metric",
+					},
+				},
+				MaxResolutionWindow:     5,
+				Aggregates:              []storepb.Aggr{storepb.Aggr_SUM},
+				PartialResponseDisabled: false,
+			},
+			err: errors.New(`Metric "bad.metric" is blocked on Geras`),
+		},
+		{
+			knownMetrics: []string{"bad.metric"},
+			blockedMetrics: regexp.MustCompile(`bad`),
+			req: storepb.SeriesRequest{
+				MinTime: 0,
+				MaxTime: 100,
+				Matchers: []storepb.LabelMatcher{
+					{
+						Type:  storepb.LabelMatcher_EQ,
+						Name:  "__name__",
+						Value: "bad:metric",
+					},
+				},
+				MaxResolutionWindow:     5,
+				Aggregates:              []storepb.Aggr{storepb.Aggr_SUM},
+				PartialResponseDisabled: false,
+			},
+			// Expected: err: errors.New(`Metric "bad.metric" is blocked on Geras`),
+			// Actual current behaviour:
+			tsdbQ: &opentsdb.QueryParam{},
+		},
+	}
 
 	for _, test := range testCases {
+		allowedMetrics := regexp.MustCompile(".*")
+		if test.allowedMetrics != nil {
+			allowedMetrics = test.allowedMetrics
+		}
 		store := OpenTSDBStore{
 			metricNames:        test.knownMetrics,
 			logger:             log.NewJSONLogger(os.Stdout),
-			allowedMetricNames: regexp.MustCompile(".*"),
+			allowedMetricNames: allowedMetrics,
+			blockedMetricNames: test.blockedMetrics,
 		}
+
 		p, _, err := store.composeOpenTSDBQuery(&test.req)
 		if test.err != nil {
 			if test.err.Error() != err.Error() {
@@ -327,6 +423,12 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 		}
 		if err != nil {
 			t.Error(err)
+		}
+		if len(p.Queries) != len(test.tsdbQ.Queries) {
+			t.Errorf("expected %d queries, got %d", len(test.tsdbQ.Queries), len(p.Queries))
+		}
+		if len(test.tsdbQ.Queries) == 0 {
+			continue
 		}
 		// test the requested ranges
 		if test.tsdbQ.Start.(int) != int(p.Start.(int64)) ||
