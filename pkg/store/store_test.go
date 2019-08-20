@@ -381,7 +381,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 		},
 		{
 			knownMetrics: []string{"bad.metric"},
-			blockedMetrics: regexp.MustCompile(`bad`),
+			blockedMetrics: regexp.MustCompile(`bad\.`),
 			req: storepb.SeriesRequest{
 				MinTime: 0,
 				MaxTime: 100,
@@ -396,9 +396,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 				Aggregates:              []storepb.Aggr{storepb.Aggr_SUM},
 				PartialResponseDisabled: false,
 			},
-			// Expected: err: errors.New(`Metric "bad.metric" is blocked on Geras`),
-			// Actual current behaviour:
-			tsdbQ: &opentsdb.QueryParam{},
+			err: errors.New(`Metric "bad.metric" is blocked on Geras`),
 		},
 	}
 

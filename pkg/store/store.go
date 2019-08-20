@@ -156,13 +156,16 @@ func (store *OpenTSDBStore) getMatchingMetricNames(matcher storepb.LabelMatcher)
 		return nil, errors.New("getMatchingMetricNames must be called on __name__ matcher")
 	}
 	if matcher.Type == storepb.LabelMatcher_EQ {
-		return []string{matcher.Value}, nil
+		value := strings.Replace(matcher.Value, ":", ".", -1)
+		return []string{value}, nil
 	} else if matcher.Type == storepb.LabelMatcher_NEQ {
 		// we can support this, but we should not.
 		return nil, errors.New("NEQ is not supported for __name__ label")
 	} else if matcher.Type == storepb.LabelMatcher_NRE {
 		return nil, errors.New("NRE is not supported")
 	} else if matcher.Type == storepb.LabelMatcher_RE {
+		// TODO: Regexp matchers working on the actual name seems like the least
+		// surprising behaviour. Actually document this.
 		rx, err := regexp.Compile(matcher.Value)
 		if err != nil {
 			return nil, err
@@ -220,7 +223,6 @@ func (store *OpenTSDBStore) composeOpenTSDBQuery(req *storepb.SeriesRequest) (op
 
 	subQueries := make([]opentsdb.SubQuery, len(metricNames))
 	for i, mn := range metricNames {
-		mn = strings.Replace(mn, ":", ".", -1)
 		subQueries[i] = opentsdb.SubQuery{
 			Aggregator: "none",
 			Metric:     mn,
