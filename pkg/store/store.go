@@ -28,18 +28,20 @@ type MinimalOpenTSDBClient interface {
 }
 
 type OpenTSDBStore struct {
-	logger                log.Logger
-	openTSDBClient        MinimalOpenTSDBClient
-	metricNames           []string
-	metricsNamesLock      sync.RWMutex
-	metricRefreshInterval time.Duration
+	logger                  log.Logger
+	openTSDBClient          MinimalOpenTSDBClient
+	metricNames             []string
+	metricsNamesLock        sync.RWMutex
+	metricRefreshInterval   time.Duration
+	enableMetricSuggestions bool
 }
 
-func NewOpenTSDBStore(logger log.Logger, client MinimalOpenTSDBClient, interval time.Duration) *OpenTSDBStore {
+func NewOpenTSDBStore(logger log.Logger, client MinimalOpenTSDBClient, interval time.Duration, enableMetricSuggestions bool) *OpenTSDBStore {
 	store := &OpenTSDBStore{
-		logger:                log.With(logger, "component", "opentsdb"),
-		openTSDBClient:        client,
-		metricRefreshInterval: interval,
+		logger:                  log.With(logger, "component", "opentsdb"),
+		openTSDBClient:          client,
+		metricRefreshInterval:   interval,
+		enableMetricSuggestions: enableMetricSuggestions,
 	}
 	err := store.loadAllMetricNames()
 	if err != nil {
@@ -130,11 +132,13 @@ func (store *OpenTSDBStore) LabelValues(
 	ctx context.Context,
 	req *storepb.LabelValuesRequest) (*storepb.LabelValuesResponse, error) {
 	level.Debug(store.logger).Log("msg", "LabelValues", "Label", req.Label)
-	if req.Label == "__name__" {
+	if store.enableMetricSuggestions && req.Label == "__name__" {
 		var pNames []string
+		store.metricsNamesLock.RLock()
 		for _, item := range store.metricNames {
 			pNames = append(pNames, strings.Replace(item, ".", ":", -1))
 		}
+		store.metricsNamesLock.Unlock()
 		return &storepb.LabelValuesResponse{
 			Values: pNames,
 		}, nil
