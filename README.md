@@ -33,6 +33,17 @@ After the build you will have a self-contained binary (`geras`). It writes logs 
         Time between metric name refreshes. Use negative duration to disable refreshes. (default 15m0s)
   -opentsdb-address string
         host:port
+  -metrics-allowed-regexp regexp
+        A regular expression specifying the allowed metrics. Default is `.*`,
+        i.e. everything. A good value if your metric names all match OpenTSDB
+        style of `service.metric.name` could be `^\w+\..*$`. Disallowed metrics
+        are simply not queried and non error is returned -- the purpose is to
+        not send traffic to OpenTSDB when the metric source is Prometheus.
+  -metrics-blocked-regexp regexp
+        A regular expression of metrics to block. Default is empty and means to
+        not block anything. The expected use of this is to block problematic
+        queries as a fast mitigation therefore an error is returned when a
+        metric is blocked.
 ```
 
 ## Limitations
