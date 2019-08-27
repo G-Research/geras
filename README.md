@@ -1,15 +1,11 @@
 # Geras
 [![CircleCI](https://circleci.com/gh/G-Research/geras/tree/master.svg?style=svg)](https://circleci.com/gh/G-Research/geras/tree/master)
 
-The goal of this project is to make it possible to run PromQL queries on OpenTSDB using the same interface.
+The goal of this project is to make it possible to run PromQL queries on OpenTSDB.
 
-This component is not part of Thanos project, but it is designed to work with Thanos. This decision has been
-made here: https://github.com/improbable-eng/thanos/issues/768
+We have achieved this by providing an implementation of the [Thanos](https://github.com/improbable-eng/thanos) StoreAPI. 
 
-## Solution
-
-Since Thanos's StoreAPI is designed for unified data access and it's not too Prometheus specific, Geras can
-implement it on top of OpenTSDB providing a unified view over Prometheus and OpenTSDB.
+Since Thanos's StoreAPI is designed for unified data access and is not too Prometheus specific, Geras is able to provide an implementation which proxies onto the OpenTSDB HTTP API, giving the ability to query OpenTSDB using PromQL, and even enabling unified queries over Prometheus and OpenTSDB.
 
 ## Build
 
@@ -49,5 +45,9 @@ After the build you will have a self-contained binary (`geras`). It writes logs 
 ## Limitations
 
 * PromQL supports queries without `__name__`. This is not allowed in geras and it will raise an error.
-* Geras loads the metric names from OpenTSDB and keeps them in memory for queries like `__name__=~""`.
-* Have to use `:` instead of `.` in metric names (PromQL limitation).
+* Geras periodically loads metric names from OpenTSDB and keeps them in memory to support queries like `{__name__=~""}`.
+* Thanos' primary timeseries backend is Prometheus, which doesn't support `.` in metric names. However OpenTSDB metrics generally use `.` as a seperator within names. In order to query names containing a `.` you will need to either:
+  * Replace all `.` with `:` in your query
+    
+    OR
+  * Use the magic `__name__` label to specify the metric name, e.g. `{__name__="cpu.percent"}`

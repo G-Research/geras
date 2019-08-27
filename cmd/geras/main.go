@@ -57,6 +57,7 @@ func main() {
 		"Time between metric name refreshes. Use negative duration to disable refreshes.")
 	allowedMetricNamesRE := flag.String("metrics-allowed-regexp", ".*", "Regexp of metrics to allow")
 	blockedMetricNamesRE := flag.String("metrics-blocked-regexp", "", "Regexp of metrics to block (empty disables blocking)")
+	enableMetricSuggestions := flag.Bool("metrics-suggestions", true, "Enable metric suggestions (can be expensive)")
 	flag.Parse()
 
 	if *openTSDBAddress == "" {
@@ -93,7 +94,7 @@ func main() {
 		os.Exit(1)
 	}
 	// create openTSDBStore and expose its api on a grpc server
-	srv := store.NewOpenTSDBStore(logger, client, *refreshInterval, allowedMetricNames, blockedMetricNames)
+	srv := store.NewOpenTSDBStore(logger, client, *refreshInterval, allowedMetricNames, blockedMetricNames, *enableMetricSuggestions)
 	grpcSrv := grpc.NewServer()
 	storepb.RegisterStoreServer(grpcSrv, srv)
 	l, err := net.Listen("tcp", *grpcListenAddr)
