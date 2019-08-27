@@ -54,6 +54,7 @@ func main() {
 	openTSDBAddress := flag.String("opentsdb-address", "", "host:port")
 	refreshInterval := flag.Duration("metrics-refresh-interval", time.Minute*15,
 		"Time between metric name refreshes. Use negative duration to disable refreshes.")
+	enableMetricSuggestions := flag.Bool("metrics-suggestions", true, "Enable metric suggestions (can be expensive)")
 	flag.Parse()
 	if *openTSDBAddress == "" {
 		flag.PrintDefaults()
@@ -75,7 +76,7 @@ func main() {
 		os.Exit(1)
 	}
 	// create openTSDBStore and expose its api on a grpc server
-	srv := store.NewOpenTSDBStore(logger, client, *refreshInterval)
+	srv := store.NewOpenTSDBStore(logger, client, *refreshInterval, *enableMetricSuggestions)
 	grpcSrv := grpc.NewServer()
 	storepb.RegisterStoreServer(grpcSrv, srv)
 	l, err := net.Listen("tcp", *grpcListenAddr)

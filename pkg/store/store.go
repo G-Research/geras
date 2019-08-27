@@ -28,18 +28,20 @@ type MinimalOpenTSDBClient interface {
 }
 
 type OpenTSDBStore struct {
-	logger                log.Logger
-	openTSDBClient        MinimalOpenTSDBClient
-	metricNames           []string
-	metricsNamesLock      sync.RWMutex
-	metricRefreshInterval time.Duration
+	logger                  log.Logger
+	openTSDBClient          MinimalOpenTSDBClient
+	metricNames             []string
+	metricsNamesLock        sync.RWMutex
+	metricRefreshInterval   time.Duration
+	enableMetricSuggestions bool
 }
 
-func NewOpenTSDBStore(logger log.Logger, client MinimalOpenTSDBClient, interval time.Duration) *OpenTSDBStore {
+func NewOpenTSDBStore(logger log.Logger, client MinimalOpenTSDBClient, interval time.Duration, enableMetricSuggestions bool) *OpenTSDBStore {
 	store := &OpenTSDBStore{
-		logger:                log.With(logger, "component", "opentsdb"),
-		openTSDBClient:        client,
-		metricRefreshInterval: interval,
+		logger:                  log.With(logger, "component", "opentsdb"),
+		openTSDBClient:          client,
+		metricRefreshInterval:   interval,
+		enableMetricSuggestions: enableMetricSuggestions,
 	}
 	err := store.loadAllMetricNames()
 	if err != nil {
@@ -104,38 +106,53 @@ func (store *OpenTSDBStore) Series(
 func (store *OpenTSDBStore) LabelNames(
 	ctx context.Context,
 	req *storepb.LabelNamesRequest) (*storepb.LabelNamesResponse, error) {
-	labelNames, err := store.openTSDBClient.Suggest(
+	labelNames, err := store.suggestAsList(ctx, "tagk")
+	if err != nil {
+		return nil, err
+	}
+	return &storepb.LabelNamesResponse{
+		Names: labelNames,
+	}, nil
+}
+
+func (store *OpenTSDBStore) suggestAsList(ctx context.Context, t string) ([]string, error) {
+	result, err := store.openTSDBClient.Suggest(
 		opentsdb.SuggestParam{
-			Type:         "tagk",
+			Type:         t,
 			Q:            "",
 			MaxResultNum: math.MaxInt32,
 		})
 	if err != nil {
 		return nil, err
 	}
-	return &storepb.LabelNamesResponse{
-		Names: labelNames.ResultInfo,
-	}, nil
+	return result.ResultInfo, nil
 }
 
 func (store *OpenTSDBStore) LabelValues(
 	ctx context.Context,
 	req *storepb.LabelValuesRequest) (*storepb.LabelValuesResponse, error) {
 	level.Debug(store.logger).Log("msg", "LabelValues", "Label", req.Label)
+	if store.enableMetricSuggestions && req.Label == "__name__" {
+		var pNames []string
+		store.metricsNamesLock.RLock()
+		for _, item := range store.metricNames {
+			pNames = append(pNames, strings.Replace(item, ".", ":", -1))
+		}
+		store.metricsNamesLock.Unlock()
+		return &storepb.LabelValuesResponse{
+			Values: pNames,
+		}, nil
+	}
 	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
 func (store *OpenTSDBStore) loadAllMetricNames() error {
-	resp, err := store.openTSDBClient.Suggest(opentsdb.SuggestParam{
-		Type:         "metrics",
-		Q:            "",            // no restriction
-		MaxResultNum: math.MaxInt32, // all of the metric names
-	})
+	metricNames, err := store.suggestAsList(context.Background(), "metrics")
 	if err != nil {
 		return err
 	}
 	store.metricsNamesLock.Lock()
-	store.metricNames = resp.ResultInfo
+	store.metricNames = metricNames
 	store.metricsNamesLock.Unlock()
 	return nil
 }
