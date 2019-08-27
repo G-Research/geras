@@ -13,10 +13,10 @@ import (
 
 func TestComposeOpenTSDBQuery(t *testing.T) {
 	testCases := []struct {
-		req          storepb.SeriesRequest
-		tsdbQ        *opentsdb.QueryParam
-		knownMetrics []string
-		err          error
+		req                            storepb.SeriesRequest
+		tsdbQ                          *opentsdb.QueryParam
+		knownMetrics                   []string
+		err                            error
 		allowedMetrics, blockedMetrics *regexp.Regexp
 	}{
 		{
@@ -313,7 +313,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 			},
 		},
 		{
-			knownMetrics: []string{"test.metric", "other.metric"},
+			knownMetrics:   []string{"test.metric", "other.metric"},
 			allowedMetrics: regexp.MustCompile(`test\..*`),
 			req: storepb.SeriesRequest{
 				MinTime: 0,
@@ -341,7 +341,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 			},
 		},
 		{
-			knownMetrics: []string{"test.metric"},
+			knownMetrics:   []string{"test.metric"},
 			allowedMetrics: regexp.MustCompile(`^\w+\.`),
 			req: storepb.SeriesRequest{
 				MinTime: 0,
@@ -361,7 +361,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 			tsdbQ: &opentsdb.QueryParam{},
 		},
 		{
-			knownMetrics: []string{"bad.metric"},
+			knownMetrics:   []string{"bad.metric"},
 			blockedMetrics: regexp.MustCompile(`bad`),
 			req: storepb.SeriesRequest{
 				MinTime: 0,
@@ -380,7 +380,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 			err: errors.New(`Metric "bad.metric" is blocked on Geras`),
 		},
 		{
-			knownMetrics: []string{"bad.metric"},
+			knownMetrics:   []string{"bad.metric"},
 			blockedMetrics: regexp.MustCompile(`bad\.`),
 			req: storepb.SeriesRequest{
 				MinTime: 0,
