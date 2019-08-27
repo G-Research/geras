@@ -37,4 +37,6 @@ After the build you will have a self-contained binary (`geras`). It writes logs 
 * Geras periodically loads metric names from OpenTSDB and keeps them in memory to support queries like `{__name__=~""}`.
 * Thanos' primary timeseries backend is Prometheus, which doesn't support `.` in metric names. However OpenTSDB metrics generally use `.` as a seperator within names. In order to query names containing a `.` you will need to either:
   * Replace all `.` with `:` in your query
+    
+    OR
   * Use the magic `__name__` label to specify the metric name, e.g. `{__name__="cpu.percent"}`
