@@ -1,7 +1,7 @@
 module github.com/G-Research/geras
 
 require (
-	github.com/G-Research/opentsdb-goclient v0.0.0-20190828073449-1e3ceabbc399
+	github.com/G-Research/opentsdb-goclient v0.0.0-20190828082755-4afa36ecdd81
 	github.com/go-kit/kit v0.8.0
 	github.com/improbable-eng/thanos v0.4.0
 	github.com/pkg/errors v0.8.1

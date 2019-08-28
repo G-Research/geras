@@ -10,6 +10,8 @@ github.com/Azure/go-autorest v11.2.8+incompatible/go.mod h1:r+4oMnoxhatjLLJ6zxSW
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/G-Research/opentsdb-goclient v0.0.0-20190828073449-1e3ceabbc399 h1:l6uJZP62NBLM0a/QfbY73FU9Cq+Hvmds3ObLNHWB8xQ=
 github.com/G-Research/opentsdb-goclient v0.0.0-20190828073449-1e3ceabbc399/go.mod h1:oVqXUYMDThF8Uz8WH3f80BlB7+Y5BV4wDtqQ06e4m7g=
+github.com/G-Research/opentsdb-goclient v0.0.0-20190828082755-4afa36ecdd81 h1:3+UO4WLWLNqvtBueWhV9RymsGfRkaaEaUkDw2IMoEks=
+github.com/G-Research/opentsdb-goclient v0.0.0-20190828082755-4afa36ecdd81/go.mod h1:oVqXUYMDThF8Uz8WH3f80BlB7+Y5BV4wDtqQ06e4m7g=
 github.com/NYTimes/gziphandler v1.1.1/go.mod h1:n/CVRwUEOgIxrgPvAQhUUr9oeUtvrhMomdKFjzJNB0c=
 github.com/OneOfOne/xxhash v1.2.2 h1:KMrpdQIwFcEqXDklaen+P1axHaj9BSKzvpUUfnHldSE=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=

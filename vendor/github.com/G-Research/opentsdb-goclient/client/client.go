@@ -438,7 +438,7 @@ type ClientContext interface {
 	Client
 }
 
-func NewClientContext(opentsdbCfg config.OpenTSDBConfig) (Client, error) {
+func NewClientContext(opentsdbCfg config.OpenTSDBConfig) (ClientContext, error) {
 	client, err := NewClient(opentsdbCfg)
 	if err != nil {
 		return nil, err
