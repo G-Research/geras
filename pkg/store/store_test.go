@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	opentsdb "github.com/bluebreezecf/opentsdb-goclient/client"
+	opentsdb "github.com/G-Research/opentsdb-goclient/client"
 	"github.com/go-kit/kit/log"
 	"github.com/improbable-eng/thanos/pkg/store/storepb"
 )

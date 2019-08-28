@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	opentsdb "github.com/bluebreezecf/opentsdb-goclient/client"
+	opentsdb "github.com/G-Research/opentsdb-goclient/client"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/improbable-eng/thanos/pkg/store/prompb"

@@ -24,6 +24,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -33,7 +34,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bluebreezecf/opentsdb-goclient/config"
+	"github.com/G-Research/opentsdb-goclient/config"
 )
 
 const (
@@ -427,10 +428,30 @@ func NewClient(opentsdbCfg config.OpenTSDBConfig) (Client, error) {
 	return &clientImpl, nil
 }
 
+// ClientContext implements the Client interface and additionally provides a
+// way to return a client that is associated with the given context.
+type ClientContext interface {
+	// WithContext returns a Client that is associated with the given context.
+	// Use this to pass a context to underlying transport (e.g. to specify a
+	// deadline).
+	WithContext(ctx context.Context) Client
+	Client
+}
+
+func NewClientContext(opentsdbCfg config.OpenTSDBConfig) (Client, error) {
+	client, err := NewClient(opentsdbCfg)
+	if err != nil {
+		return nil, err
+	}
+	// We know this is actually clientImpl and implements this interface.
+	return client.(ClientContext), nil
+}
+
 // The private implementation of Client interface.
 type clientImpl struct {
 	tsdbEndpoint string
 	client       *http.Client
+	ctx          context.Context
 	opentsdbCfg  config.OpenTSDBConfig
 }
 
@@ -455,12 +476,24 @@ type Response interface {
 	String() string
 }
 
+func (c *clientImpl) WithContext(ctx context.Context) Client {
+	return &clientImpl{
+		tsdbEndpoint: c.tsdbEndpoint,
+		client:       c.client,
+		ctx:          ctx,
+		opentsdbCfg:  c.opentsdbCfg,
+	}
+}
+
 // sendRequest dispatches the http request with the given method name, url and body contents.
 // reqBodyCnt is "" means there is no contents in the request body.
 // If the tsdb server responses properly, the error is nil and parsedResp is the parsed
 // response with the specific type. Otherwise, the returned error is not nil.
 func (c *clientImpl) sendRequest(method, url, reqBodyCnt string, parsedResp Response) error {
 	req, err := http.NewRequest(method, url, strings.NewReader(reqBodyCnt))
+        if c.ctx != nil {
+          req = req.WithContext(c.ctx)
+        }
 	if err != nil {
 		return errors.New(fmt.Sprintf("Failed to create request for %s %s: %v", method, url, err))
 	}
