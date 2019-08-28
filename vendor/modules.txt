@@ -1,4 +1,4 @@
-# github.com/G-Research/opentsdb-goclient v0.0.0-20190828082755-4afa36ecdd81
+# github.com/G-Research/opentsdb-goclient v0.0.0-20190828110221-c9d4b9754e63
 github.com/G-Research/opentsdb-goclient/client
 github.com/G-Research/opentsdb-goclient/config
 # github.com/cespare/xxhash v1.1.0

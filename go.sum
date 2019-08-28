@@ -8,10 +8,8 @@ github.com/Azure/azure-sdk-for-go v23.2.0+incompatible/go.mod h1:9XXNKU+eRnpl9mo
 github.com/Azure/azure-storage-blob-go v0.0.0-20181022225951-5152f14ace1c/go.mod h1:oGfmITT1V6x//CswqY2gtAHND+xIP64/qL7a5QJix0Y=
 github.com/Azure/go-autorest v11.2.8+incompatible/go.mod h1:r+4oMnoxhatjLLJ6zxSWATqVooLgysK6ZNox3g/xq24=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
-github.com/G-Research/opentsdb-goclient v0.0.0-20190828073449-1e3ceabbc399 h1:l6uJZP62NBLM0a/QfbY73FU9Cq+Hvmds3ObLNHWB8xQ=
-github.com/G-Research/opentsdb-goclient v0.0.0-20190828073449-1e3ceabbc399/go.mod h1:oVqXUYMDThF8Uz8WH3f80BlB7+Y5BV4wDtqQ06e4m7g=
-github.com/G-Research/opentsdb-goclient v0.0.0-20190828082755-4afa36ecdd81 h1:3+UO4WLWLNqvtBueWhV9RymsGfRkaaEaUkDw2IMoEks=
-github.com/G-Research/opentsdb-goclient v0.0.0-20190828082755-4afa36ecdd81/go.mod h1:oVqXUYMDThF8Uz8WH3f80BlB7+Y5BV4wDtqQ06e4m7g=
+github.com/G-Research/opentsdb-goclient v0.0.0-20190828110221-c9d4b9754e63 h1:1TuTmTecQ7JP1HIITtgkuXs1I6zif1ZoRrCCRsuPQ38=
+github.com/G-Research/opentsdb-goclient v0.0.0-20190828110221-c9d4b9754e63/go.mod h1:oVqXUYMDThF8Uz8WH3f80BlB7+Y5BV4wDtqQ06e4m7g=
 github.com/NYTimes/gziphandler v1.1.1/go.mod h1:n/CVRwUEOgIxrgPvAQhUUr9oeUtvrhMomdKFjzJNB0c=
 github.com/OneOfOne/xxhash v1.2.2 h1:KMrpdQIwFcEqXDklaen+P1axHaj9BSKzvpUUfnHldSE=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
