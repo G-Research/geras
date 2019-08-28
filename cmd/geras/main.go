@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/G-Research/geras/pkg/store"
-	opentsdb "github.com/bluebreezecf/opentsdb-goclient/client"
-	"github.com/bluebreezecf/opentsdb-goclient/config"
+	opentsdb "github.com/G-Research/opentsdb-goclient/client"
+	"github.com/G-Research/opentsdb-goclient/config"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/improbable-eng/thanos/pkg/store/storepb"
@@ -85,7 +85,7 @@ func main() {
 		os.Exit(1)
 	}
 	// initialize openTSDB api client
-	client, err := opentsdb.NewClient(
+	client, err := opentsdb.NewClientContext(
 		config.OpenTSDBConfig{
 			OpentsdbHost: *openTSDBAddress,
 		})

@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	opentsdb "github.com/bluebreezecf/opentsdb-goclient/client"
+	opentsdb "github.com/G-Research/opentsdb-goclient/client"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/improbable-eng/thanos/pkg/store/prompb"
@@ -20,17 +20,9 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// the original OpenTSDBClient has 24 methods, this interface contains only the
-// subset of them which are used
-// and its easier to write a mock for this one.
-type MinimalOpenTSDBClient interface {
-	Query(param opentsdb.QueryParam) (*opentsdb.QueryResponse, error)
-	Suggest(param opentsdb.SuggestParam) (*opentsdb.SuggestResponse, error)
-}
-
 type OpenTSDBStore struct {
 	logger                                 log.Logger
-	openTSDBClient                         MinimalOpenTSDBClient
+	openTSDBClient                         opentsdb.ClientContext
 	metricNames                            []string
 	metricsNamesLock                       sync.RWMutex
 	metricRefreshInterval                  time.Duration
@@ -38,21 +30,21 @@ type OpenTSDBStore struct {
 	enableMetricSuggestions                bool
 }
 
-func NewOpenTSDBStore(logger log.Logger, client MinimalOpenTSDBClient, interval time.Duration, allowedMetricNames, blockedMetricNames *regexp.Regexp, enableMetricSuggestions bool) *OpenTSDBStore {
+func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, interval time.Duration, allowedMetricNames, blockedMetricNames *regexp.Regexp, enableMetricSuggestions bool) *OpenTSDBStore {
 	store := &OpenTSDBStore{
 		logger:                  log.With(logger, "component", "opentsdb"),
 		openTSDBClient:          client,
 		metricRefreshInterval:   interval,
 		enableMetricSuggestions: enableMetricSuggestions,
 	}
-	err := store.loadAllMetricNames()
+	err := store.loadAllMetricNames(context.TODO())
 	if err != nil {
 		level.Info(store.logger).Log("err", err)
 	}
 	if store.metricRefreshInterval >= 0 {
 		go func() {
 			for {
-				err := store.loadAllMetricNames()
+				err := store.loadAllMetricNames(context.TODO())
 				if err != nil {
 					level.Info(store.logger).Log("err", err)
 				} else {
@@ -95,7 +87,7 @@ func (store *OpenTSDBStore) Series(
 		}
 	}
 
-	result, err := store.openTSDBClient.Query(query)
+	result, err := store.openTSDBClient.WithContext(server.Context()).Query(query)
 	if err != nil {
 		level.Error(store.logger).Log("err", err)
 		return err
@@ -127,7 +119,7 @@ func (store *OpenTSDBStore) LabelNames(
 }
 
 func (store *OpenTSDBStore) suggestAsList(ctx context.Context, t string) ([]string, error) {
-	result, err := store.openTSDBClient.Suggest(
+	result, err := store.openTSDBClient.WithContext(ctx).Suggest(
 		opentsdb.SuggestParam{
 			Type:         t,
 			Q:            "",
@@ -157,8 +149,8 @@ func (store *OpenTSDBStore) LabelValues(
 	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
-func (store *OpenTSDBStore) loadAllMetricNames() error {
-	metricNames, err := store.suggestAsList(context.Background(), "metrics")
+func (store *OpenTSDBStore) loadAllMetricNames(ctx context.Context) error {
+	metricNames, err := store.suggestAsList(ctx, "metrics")
 	if err != nil {
 		return err
 	}

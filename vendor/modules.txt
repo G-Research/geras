@@ -1,6 +1,6 @@
-# github.com/bluebreezecf/opentsdb-goclient v0.0.0-20160515074635-539764bd9a9c
-github.com/bluebreezecf/opentsdb-goclient/client
-github.com/bluebreezecf/opentsdb-goclient/config
+# github.com/G-Research/opentsdb-goclient v0.0.0-20190828110221-c9d4b9754e63
+github.com/G-Research/opentsdb-goclient/client
+github.com/G-Research/opentsdb-goclient/config
 # github.com/cespare/xxhash v1.1.0
 github.com/cespare/xxhash
 # github.com/go-kit/kit v0.8.0
