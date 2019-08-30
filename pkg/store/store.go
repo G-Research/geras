@@ -28,14 +28,18 @@ type OpenTSDBStore struct {
 	metricRefreshInterval                  time.Duration
 	allowedMetricNames, blockedMetricNames *regexp.Regexp
 	enableMetricSuggestions                bool
+	storeLabels                            []storepb.Label
 }
 
-func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, interval time.Duration, allowedMetricNames, blockedMetricNames *regexp.Regexp, enableMetricSuggestions bool) *OpenTSDBStore {
+func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, interval time.Duration, storeLabels []storepb.Label, allowedMetricNames, blockedMetricNames *regexp.Regexp, enableMetricSuggestions bool) *OpenTSDBStore {
 	store := &OpenTSDBStore{
 		logger:                  log.With(logger, "component", "opentsdb"),
 		openTSDBClient:          client,
 		metricRefreshInterval:   interval,
 		enableMetricSuggestions: enableMetricSuggestions,
+		storeLabels:             storeLabels,
+		allowedMetricNames:      allowedMetricNames,
+		blockedMetricNames:      blockedMetricNames,
 	}
 	err := store.loadAllMetricNames(context.TODO())
 	if err != nil {
@@ -63,7 +67,7 @@ func (store *OpenTSDBStore) Info(
 	res := storepb.InfoResponse{
 		MinTime: 0,
 		MaxTime: math.MaxInt64,
-		Labels:  []storepb.Label{},
+		Labels:  store.storeLabels,
 	}
 	level.Debug(store.logger).Log("msg", "Info")
 	return &res, nil

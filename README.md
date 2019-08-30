@@ -20,7 +20,9 @@ After the build you will have a self-contained binary (`geras`). It writes logs 
 
 ```
   -grpc-listen string
-        service will expose the store api on this address (default "localhost:19000")
+        Service will expose the Store API on this address (default "localhost:19000")
+  -label value
+        Label to expose on the Store API, of the form '<key>=<value>'. May be repeated.
   -log.format string
         Log format. One of [logfmt, json] (default "logfmt")
   -log.level string
@@ -28,7 +30,7 @@ After the build you will have a self-contained binary (`geras`). It writes logs 
   -metrics-refresh-interval duration
         Time between metric name refreshes. Use negative duration to disable refreshes. (default 15m0s)
   -opentsdb-address string
-        host:port
+        http[s]://<host>:<port>
   -metrics-allowed-regexp regexp
         A regular expression specifying the allowed metrics. Default is `.*`,
         i.e. everything. A good value if your metric names all match OpenTSDB
@@ -41,6 +43,12 @@ After the build you will have a self-contained binary (`geras`). It writes logs 
         queries as a fast mitigation therefore an error is returned when a
         metric is blocked.
 ```
+
+When specifying multiple labels, you will need to repeat the argument name, e.g:
+
+```
+./geras -label label1=value1 -label label2=value2
+``` 
 
 ## Limitations
 
