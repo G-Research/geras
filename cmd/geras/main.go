@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/G-Research/geras/pkg/store"
@@ -47,17 +48,30 @@ func NewConfiguredLogger(format string, logLevel string) (log.Logger, error) {
 	return logger, nil
 }
 
+type multipleStringFlags []string
+
+func (i *multipleStringFlags) String() string {
+	return fmt.Sprintf(strings.Join(*i, ", "))
+}
+
+func (i *multipleStringFlags) Set(value string) error {
+	*i = append(*i, value)
+	return nil
+}
+
 func main() {
 	// define and parse command line flags
-	grpcListenAddr := flag.String("grpc-listen", "localhost:19000", "service will expose the store api on this address")
+	grpcListenAddr := flag.String("grpc-listen", "localhost:19000", "Service will expose the Store API on this address")
 	logFormat := flag.String("log.format", "logfmt", "Log format. One of [logfmt, json]")
 	logLevel := flag.String("log.level", "error", "Log filtering level. One of [debug, info, warn, error]")
-	openTSDBAddress := flag.String("opentsdb-address", "", "host:port")
+	openTSDBAddress := flag.String("opentsdb-address", "", "http[s]://<host>:<port>")
 	refreshInterval := flag.Duration("metrics-refresh-interval", time.Minute*15,
 		"Time between metric name refreshes. Use negative duration to disable refreshes.")
 	allowedMetricNamesRE := flag.String("metrics-allowed-regexp", ".*", "Regexp of metrics to allow")
 	blockedMetricNamesRE := flag.String("metrics-blocked-regexp", "", "Regexp of metrics to block (empty disables blocking)")
 	enableMetricSuggestions := flag.Bool("metrics-suggestions", true, "Enable metric suggestions (can be expensive)")
+	var labels multipleStringFlags
+	flag.Var(&labels, "label", "Label to expose on the Store API, of the form '<key>=<value>'. May be repeated.")
 	flag.Parse()
 
 	if *openTSDBAddress == "" {
@@ -93,8 +107,22 @@ func main() {
 		level.Error(logger).Log("err", err)
 		os.Exit(1)
 	}
+	var storeLabels []storepb.Label
+	for _, label := range labels {
+		splitLabel := strings.Split(label, "=")
+		if len(splitLabel) != 2 {
+			level.Error(logger).Log("message", fmt.Sprintf("Labels should be of the form '<key>=<value>', actually found '%s'", label))
+			os.Exit(1)
+		}
+		storeLabel := storepb.Label{
+			Name:  splitLabel[0],
+			Value: splitLabel[1],
+		}
+		storeLabels = append(storeLabels, storeLabel)
+	}
+
 	// create openTSDBStore and expose its api on a grpc server
-	srv := store.NewOpenTSDBStore(logger, client, *refreshInterval, allowedMetricNames, blockedMetricNames, *enableMetricSuggestions)
+	srv := store.NewOpenTSDBStore(logger, client, *refreshInterval, storeLabels, allowedMetricNames, blockedMetricNames, *enableMetricSuggestions)
 	grpcSrv := grpc.NewServer()
 	storepb.RegisterStoreServer(grpcSrv, srv)
 	l, err := net.Listen("tcp", *grpcListenAddr)
