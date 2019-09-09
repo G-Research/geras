@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"regexp"
 	"strings"
@@ -16,6 +17,8 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/improbable-eng/thanos/pkg/store/storepb"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 )
 
@@ -62,6 +65,7 @@ func (i *multipleStringFlags) Set(value string) error {
 func main() {
 	// define and parse command line flags
 	grpcListenAddr := flag.String("grpc-listen", "localhost:19000", "Service will expose the Store API on this address")
+	httpListenAddr := flag.String("http-listen", "localhost:19001", "Where to serve HTTP debugging endpoints (like /metrics)")
 	logFormat := flag.String("log.format", "logfmt", "Log format. One of [logfmt, json]")
 	logLevel := flag.String("log.level", "error", "Log filtering level. One of [debug, info, warn, error]")
 	openTSDBAddress := flag.String("opentsdb-address", "", "http[s]://<host>:<port>")
@@ -121,14 +125,19 @@ func main() {
 		storeLabels = append(storeLabels, storeLabel)
 	}
 
+	http.Handle("/metrics", promhttp.Handler())
+
 	// create openTSDBStore and expose its api on a grpc server
-	srv := store.NewOpenTSDBStore(logger, client, *refreshInterval, storeLabels, allowedMetricNames, blockedMetricNames, *enableMetricSuggestions)
+	srv := store.NewOpenTSDBStore(logger, client, prometheus.DefaultRegisterer, *refreshInterval, storeLabels, allowedMetricNames, blockedMetricNames, *enableMetricSuggestions)
 	grpcSrv := grpc.NewServer()
 	storepb.RegisterStoreServer(grpcSrv, srv)
 	l, err := net.Listen("tcp", *grpcListenAddr)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		os.Exit(1)
+	}
+	if len(*httpListenAddr) > 0 {
+		go http.ListenAndServe(*httpListenAddr, nil)
 	}
 	grpcSrv.Serve(l)
 }
