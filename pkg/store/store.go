@@ -124,7 +124,7 @@ func (store *OpenTSDBStore) Series(
 	}
 
 	var result *opentsdb.QueryResponse
-	store.logLatency("query", func() error {
+	store.timedTSDBOp("query", func() error {
 		result, err = store.openTSDBClient.WithContext(server.Context()).Query(query)
 		return err
 	})
@@ -147,7 +147,7 @@ func (store *OpenTSDBStore) Series(
 	return nil
 }
 
-func (store *OpenTSDBStore) logLatency(endpoint string, f func() error) {
+func (store *OpenTSDBStore) timedTSDBOp(endpoint string, f func() error) {
 	start := time.Now()
 	err := f()
 	taken := float64(time.Since(start)/time.Second)
@@ -178,7 +178,7 @@ func (store *OpenTSDBStore) LabelNames(
 func (store *OpenTSDBStore) suggestAsList(ctx context.Context, t string) ([]string, error) {
 	var result *opentsdb.SuggestResponse
 	var err error
-	store.logLatency("suggest_" + t, func() error {
+	store.timedTSDBOp("suggest_" + t, func() error {
 		result, err = store.openTSDBClient.WithContext(ctx).Suggest(
 			opentsdb.SuggestParam{
 				Type:         t,
