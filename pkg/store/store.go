@@ -145,7 +145,7 @@ func (store *OpenTSDBStore) LabelValues(
 		for _, item := range store.metricNames {
 			pNames = append(pNames, strings.Replace(item, ".", ":", -1))
 		}
-		store.metricsNamesLock.Unlock()
+		store.metricsNamesLock.RUnlock()
 		return &storepb.LabelValuesResponse{
 			Values: pNames,
 		}, nil
