@@ -15,6 +15,7 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/improbable-eng/thanos/pkg/store/prompb"
 	"github.com/improbable-eng/thanos/pkg/store/storepb"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/tsdb/chunkenc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -23,6 +24,7 @@ import (
 type OpenTSDBStore struct {
 	logger                                 log.Logger
 	openTSDBClient                         opentsdb.ClientContext
+	internalMetrics                        internalMetrics
 	metricNames                            []string
 	metricsNamesLock                       sync.RWMutex
 	metricRefreshInterval                  time.Duration
@@ -31,10 +33,11 @@ type OpenTSDBStore struct {
 	storeLabels                            []storepb.Label
 }
 
-func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, interval time.Duration, storeLabels []storepb.Label, allowedMetricNames, blockedMetricNames *regexp.Regexp, enableMetricSuggestions bool) *OpenTSDBStore {
+func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, reg prometheus.Registerer, interval time.Duration, storeLabels []storepb.Label, allowedMetricNames, blockedMetricNames *regexp.Regexp, enableMetricSuggestions bool) *OpenTSDBStore {
 	store := &OpenTSDBStore{
 		logger:                  log.With(logger, "component", "opentsdb"),
 		openTSDBClient:          client,
+		internalMetrics:         newInternalMetrics(reg),
 		metricRefreshInterval:   interval,
 		enableMetricSuggestions: enableMetricSuggestions,
 		storeLabels:             storeLabels,
@@ -59,6 +62,35 @@ func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, interval
 		}()
 	}
 	return store
+}
+
+type internalMetrics struct {
+	numberOfOpenTSDBMetrics prometheus.Gauge
+	openTSDBLatency *prometheus.HistogramVec
+	servedDatapoints prometheus.Counter
+}
+
+func newInternalMetrics(reg prometheus.Registerer) internalMetrics {
+	m := internalMetrics{
+		openTSDBLatency: prometheus.NewHistogramVec(prometheus.HistogramOpts{
+			Name: "geras_opentsdb_request_latency_seconds",
+			Buckets: []float64{
+				0.01, 0.05, 0.1, 0.5, 1, 5, 10, 20, 50,
+			}},
+		  []string{"endpoint", "status"}),
+		servedDatapoints: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "geras_served_datapoints_total",
+		}),
+		numberOfOpenTSDBMetrics: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "geras_cached_metrics",
+		}),
+	}
+  if reg != nil {
+		reg.MustRegister(m.openTSDBLatency)
+		reg.MustRegister(m.servedDatapoints)
+		reg.MustRegister(m.numberOfOpenTSDBMetrics)
+	}
+	return m
 }
 
 func (store *OpenTSDBStore) Info(
@@ -91,7 +123,11 @@ func (store *OpenTSDBStore) Series(
 		}
 	}
 
-	result, err := store.openTSDBClient.WithContext(server.Context()).Query(query)
+	var result *opentsdb.QueryResponse
+	store.timedTSDBOp("query", func() error {
+		result, err = store.openTSDBClient.WithContext(server.Context()).Query(query)
+		return err
+	})
 	if err != nil {
 		level.Error(store.logger).Log("err", err)
 		return err
@@ -106,8 +142,25 @@ func (store *OpenTSDBStore) Series(
 			level.Error(store.logger).Log("err", err)
 			return err
 		}
+		store.internalMetrics.servedDatapoints.Add(float64(res.Result.Size()))
 	}
 	return nil
+}
+
+func (store *OpenTSDBStore) timedTSDBOp(endpoint string, f func() error) {
+	start := time.Now()
+	err := f()
+	taken := float64(time.Since(start)/time.Second)
+	typeString := "success"
+	if err != nil {
+		typeString = "error"
+	}
+	store.internalMetrics.openTSDBLatency.With(
+		prometheus.Labels{
+			"status": typeString,
+			"endpoint": endpoint,
+		},
+	).Observe(taken)
 }
 
 func (store *OpenTSDBStore) LabelNames(
@@ -123,12 +176,17 @@ func (store *OpenTSDBStore) LabelNames(
 }
 
 func (store *OpenTSDBStore) suggestAsList(ctx context.Context, t string) ([]string, error) {
-	result, err := store.openTSDBClient.WithContext(ctx).Suggest(
-		opentsdb.SuggestParam{
-			Type:         t,
-			Q:            "",
-			MaxResultNum: math.MaxInt32,
-		})
+	var result *opentsdb.SuggestResponse
+	var err error
+	store.timedTSDBOp("suggest_" + t, func() error {
+		result, err = store.openTSDBClient.WithContext(ctx).Suggest(
+			opentsdb.SuggestParam{
+				Type:         t,
+				Q:            "",
+				MaxResultNum: math.MaxInt32,
+			})
+		return err
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -161,6 +219,7 @@ func (store *OpenTSDBStore) loadAllMetricNames(ctx context.Context) error {
 	store.metricsNamesLock.Lock()
 	store.metricNames = metricNames
 	store.metricsNamesLock.Unlock()
+	store.internalMetrics.numberOfOpenTSDBMetrics.Set(float64(len(store.metricNames)))
 	return nil
 }
 
