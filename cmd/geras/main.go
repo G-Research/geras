@@ -20,6 +20,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 func NewConfiguredLogger(format string, logLevel string) (log.Logger, error) {
@@ -131,6 +132,7 @@ func main() {
 	srv := store.NewOpenTSDBStore(logger, client, prometheus.DefaultRegisterer, *refreshInterval, storeLabels, allowedMetricNames, blockedMetricNames, *enableMetricSuggestions)
 	grpcSrv := grpc.NewServer()
 	storepb.RegisterStoreServer(grpcSrv, srv)
+	reflection.Register(grpcSrv)
 	l, err := net.Listen("tcp", *grpcListenAddr)
 	if err != nil {
 		level.Error(logger).Log("err", err)
