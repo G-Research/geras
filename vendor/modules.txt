@@ -1,4 +1,4 @@
-# github.com/G-Research/opentsdb-goclient v0.0.0-20190828110221-c9d4b9754e63
+# github.com/G-Research/opentsdb-goclient v0.0.0-20190913102601-c8d547baa56d
 github.com/G-Research/opentsdb-goclient/client
 github.com/G-Research/opentsdb-goclient/config
 # github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973
@@ -49,8 +49,8 @@ github.com/prometheus/prometheus/pkg/labels
 # github.com/prometheus/tsdb v0.6.1
 github.com/prometheus/tsdb/chunkenc
 # golang.org/x/net v0.0.0-20190311183353-d8887717615a
-golang.org/x/net/context
 golang.org/x/net/trace
+golang.org/x/net/context
 golang.org/x/net/internal/timeseries
 golang.org/x/net/http2
 golang.org/x/net/http2/hpack
