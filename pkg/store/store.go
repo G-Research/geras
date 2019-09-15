@@ -102,11 +102,12 @@ func (store *OpenTSDBStore) Info(
 		MaxTime: math.MaxInt64,
 		Labels:  store.storeLabels,
 	}
+	var err error
 	store.timedTSDBOp("info", func() error {
-		_, err := store.openTSDBClient.WithContext(ctx).Version()
+		_, err = store.openTSDBClient.WithContext(ctx).Version()
 		return err
 	})
-	return &res, nil
+	return &res, err
 }
 
 func (store *OpenTSDBStore) Series(

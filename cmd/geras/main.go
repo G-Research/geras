@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -56,19 +55,21 @@ func NewConfiguredLogger(format string, logLevel string) (log.Logger, error) {
 
 type TracedTransport struct {
 	originalTransport http.RoundTripper
+	dumpHTTPBody      bool
 }
 
 func (t TracedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	res, err := t.originalTransport.RoundTrip(req)
 
 	if tr, ok := trace.FromContext(req.Context()); ok {
-		reqBody, _ := httputil.DumpRequest(req, true)
-		tr.LazyPrintf("TSDB Request: %v %v %v", req.Method, req.URL, string(reqBody))
+		dumpReq, _ := httputil.DumpRequest(req, t.dumpHTTPBody)
+		tr.LazyPrintf("TSDB Request: %v", string(dumpReq))
+
 		if err != nil {
-			tr.LazyPrintf("Error: %v %v %v", req.Method, req.URL, err)
+			tr.LazyPrintf("Error: %v", err)
 		} else {
-			resBody, _ := ioutil.ReadAll(res.Body)
-			tr.LazyPrintf("TSDB Response: %v %v", res.StatusCode, string(resBody))
+			dumpRes, _ := httputil.DumpResponse(res, t.dumpHTTPBody)
+			tr.LazyPrintf("TSDB Response: %v", string(dumpRes))
 		}
 	}
 
@@ -90,7 +91,8 @@ func main() {
 	// define and parse command line flags
 	grpcListenAddr := flag.String("grpc-listen", "localhost:19000", "Service will expose the Store API on this address")
 	httpListenAddr := flag.String("http-listen", "localhost:19001", "Where to serve HTTP debugging endpoints (like /metrics)")
-	enableTracing := flag.Bool("enable-tracing", false, "Enable tracing of requests, which is shown at /debug/requests")
+	traceEnabled := flag.Bool("trace-enabled", true, "Enable tracing of requests, which is shown at /debug/requests")
+	traceDumpBody := flag.Bool("trace-dumpbody", false, "Include TSDB request and response bodies in traces")
 	logFormat := flag.String("log.format", "logfmt", "Log format. One of [logfmt, json]")
 	logLevel := flag.String("log.level", "error", "Log filtering level. One of [debug, info, warn, error]")
 	openTSDBAddress := flag.String("opentsdb-address", "", "http[s]://<host>:<port>")
@@ -129,8 +131,11 @@ func main() {
 	}
 	// initialize tracing
 	var transport http.RoundTripper = opentsdb.DefaultTransport
-	if *enableTracing {
-		transport = TracedTransport{originalTransport: transport}
+	if *traceEnabled {
+		transport = TracedTransport{
+			originalTransport: transport,
+			dumpHTTPBody:      *traceDumpBody,
+		}
 		trace.AuthRequest = func(req *http.Request) (any, sensitive bool) {
 			return true, true
 		}
