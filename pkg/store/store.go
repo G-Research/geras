@@ -12,10 +12,11 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/thanos-io/thanos/pkg/store/storepb"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/prometheus/tsdb/chunkenc"
+	"github.com/thanos-io/thanos/pkg/store/storepb"
+	"golang.org/x/net/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -45,30 +46,42 @@ func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, reg prom
 		allowedMetricNames:      allowedMetricNames,
 		blockedMetricNames:      blockedMetricNames,
 	}
-	err := store.loadAllMetricNames(context.TODO())
-	if err != nil {
-		level.Info(store.logger).Log("err", err)
-	}
-	if store.metricRefreshInterval >= 0 {
-		go func() {
-			for {
-				err := store.loadAllMetricNames(context.TODO())
-				if err != nil {
-					level.Info(store.logger).Log("err", err)
-				} else {
-					level.Debug(logger).Log("msg", "metric names have been refreshed")
-				}
-				time.Sleep(store.metricRefreshInterval)
-			}
-		}()
-	}
+	store.updateMetrics(context.Background(), logger)
 	return store
 }
 
+func (store *OpenTSDBStore) updateMetrics(ctx context.Context, logger log.Logger) {
+	events := trace.NewEventLog("store.updateMetrics", "")
+
+	fetch := func() {
+		events.Printf("Refresh metrics")
+		tr := trace.New("store.updateMetrics", "fetch")
+		defer tr.Finish()
+		err := store.loadAllMetricNames(trace.NewContext(ctx, tr))
+		if err != nil {
+			level.Info(store.logger).Log("err", err)
+			events.Errorf("error: %v", err)
+		} else {
+			level.Debug(logger).Log("msg", "metric names have been refreshed")
+			events.Printf("Refreshed")
+		}
+	}
+	fetch()
+
+	if store.metricRefreshInterval >= 0 {
+		go func() {
+			for {
+				time.Sleep(store.metricRefreshInterval)
+				fetch()
+			}
+		}()
+	}
+}
+
 type internalMetrics struct {
-	numberOfOpenTSDBMetrics prometheus.Gauge
-	openTSDBLatency *prometheus.HistogramVec
-	servedDatapoints prometheus.Counter
+	numberOfOpenTSDBMetrics *prometheus.GaugeVec
+	openTSDBLatency         *prometheus.HistogramVec
+	servedDatapoints        prometheus.Counter
 }
 
 func newInternalMetrics(reg prometheus.Registerer) internalMetrics {
@@ -78,15 +91,16 @@ func newInternalMetrics(reg prometheus.Registerer) internalMetrics {
 			Buckets: []float64{
 				0.01, 0.05, 0.1, 0.5, 1, 5, 10, 20, 50,
 			}},
-		  []string{"endpoint", "status"}),
+			[]string{"endpoint", "status"}),
 		servedDatapoints: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "geras_served_datapoints_total",
 		}),
-		numberOfOpenTSDBMetrics: prometheus.NewGauge(prometheus.GaugeOpts{
+		numberOfOpenTSDBMetrics: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Name: "geras_cached_metrics",
-		}),
+		},
+			[]string{"type"}),
 	}
-  if reg != nil {
+	if reg != nil {
 		reg.MustRegister(m.openTSDBLatency)
 		reg.MustRegister(m.servedDatapoints)
 		reg.MustRegister(m.numberOfOpenTSDBMetrics)
@@ -113,16 +127,25 @@ func (store *OpenTSDBStore) Info(
 func (store *OpenTSDBStore) Series(
 	req *storepb.SeriesRequest,
 	server storepb.Store_SeriesServer) error {
-	level.Debug(store.logger).Log("msg", "Series")
+	ctx := server.Context()
 	query, warnings, err := store.composeOpenTSDBQuery(req)
 	if err != nil {
 		level.Error(store.logger).Log("err", err)
+		if tr, ok := trace.FromContext(ctx); ok {
+			tr.LazyPrintf("Series query compose error: %v", err)
+		}
 		return err
 	}
 	if len(query.Queries) == 0 {
+		if tr, ok := trace.FromContext(ctx); ok {
+			tr.LazyPrintf("Series request resulted in no queries")
+		}
 		return nil
 	}
 	if len(warnings) > 0 {
+		if tr, ok := trace.FromContext(ctx); ok {
+			tr.LazyPrintf("Series query compose warnings: %v", warnings)
+		}
 		for _, warning := range warnings {
 			server.Send(storepb.NewWarnSeriesResponse(warning))
 		}
@@ -130,17 +153,23 @@ func (store *OpenTSDBStore) Series(
 
 	var result *opentsdb.QueryResponse
 	store.timedTSDBOp("query", func() error {
-		result, err = store.openTSDBClient.WithContext(server.Context()).Query(query)
+		result, err = store.openTSDBClient.WithContext(ctx).Query(query)
 		return err
 	})
 	if err != nil {
 		level.Error(store.logger).Log("err", err)
+		if tr, ok := trace.FromContext(ctx); ok {
+			tr.LazyPrintf("Series query error: %v", err)
+		}
 		return err
 	}
 	for _, respI := range result.QueryRespCnts {
 		res, err := convertOpenTSDBResultsToSeriesResponse(respI)
 		if err != nil {
 			level.Error(store.logger).Log("err", err)
+			if tr, ok := trace.FromContext(ctx); ok {
+				tr.LazyPrintf("Series result conversion error: %v", err)
+			}
 			return err
 		}
 		if err := server.Send(res); err != nil {
@@ -155,14 +184,14 @@ func (store *OpenTSDBStore) Series(
 func (store *OpenTSDBStore) timedTSDBOp(endpoint string, f func() error) {
 	start := time.Now()
 	err := f()
-	taken := float64(time.Since(start)/time.Second)
+	taken := float64(time.Since(start) / time.Second)
 	typeString := "success"
 	if err != nil {
 		typeString = "error"
 	}
 	store.internalMetrics.openTSDBLatency.With(
 		prometheus.Labels{
-			"status": typeString,
+			"status":   typeString,
 			"endpoint": endpoint,
 		},
 	).Observe(taken)
@@ -183,7 +212,7 @@ func (store *OpenTSDBStore) LabelNames(
 func (store *OpenTSDBStore) suggestAsList(ctx context.Context, t string) ([]string, error) {
 	var result *opentsdb.SuggestResponse
 	var err error
-	store.timedTSDBOp("suggest_" + t, func() error {
+	store.timedTSDBOp("suggest_"+t, func() error {
 		result, err = store.openTSDBClient.WithContext(ctx).Suggest(
 			opentsdb.SuggestParam{
 				Type:         t,
@@ -193,7 +222,13 @@ func (store *OpenTSDBStore) suggestAsList(ctx context.Context, t string) ([]stri
 		return err
 	})
 	if err != nil {
+		if tr, ok := trace.FromContext(ctx); ok {
+			tr.LazyPrintf("Suggest %s error: %v", t, err)
+		}
 		return nil, err
+	}
+	if tr, ok := trace.FromContext(ctx); ok {
+		tr.LazyPrintf("Suggest %s results: %d items", t, len(result.ResultInfo))
 	}
 	return result.ResultInfo, nil
 }
@@ -221,10 +256,21 @@ func (store *OpenTSDBStore) loadAllMetricNames(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	store.internalMetrics.numberOfOpenTSDBMetrics.With(prometheus.Labels{
+		"type": "retrieved",
+	}).Set(float64(len(metricNames)))
+
+	metricNames, _, err = store.checkMetricNames(metricNames, false)
+	if err != nil {
+		return err
+	}
+
 	store.metricsNamesLock.Lock()
 	store.metricNames = metricNames
+	store.internalMetrics.numberOfOpenTSDBMetrics.With(prometheus.Labels{
+		"type": "served",
+	}).Set(float64(len(store.metricNames)))
 	store.metricsNamesLock.Unlock()
-	store.internalMetrics.numberOfOpenTSDBMetrics.Set(float64(len(store.metricNames)))
 	return nil
 }
 
@@ -289,7 +335,7 @@ func (store *OpenTSDBStore) composeOpenTSDBQuery(req *storepb.SeriesRequest) (op
 		return opentsdb.QueryParam{}, nil, err
 	}
 	var warnings []error
-	metricNames, warnings, err = store.checkMetricNames(metricNames)
+	metricNames, warnings, err = store.checkMetricNames(metricNames, true)
 	if err != nil {
 		level.Info(store.logger).Log("err", err)
 		return opentsdb.QueryParam{}, nil, err
@@ -316,15 +362,15 @@ func (store *OpenTSDBStore) composeOpenTSDBQuery(req *storepb.SeriesRequest) (op
 	return query, warnings, nil
 }
 
-func (store *OpenTSDBStore) checkMetricNames(metricNames []string) (allowed []string, warnings []error, err error) {
-	for _, name := range metricNames {
-		if store.blockedMetricNames != nil && store.blockedMetricNames.MatchString(name) {
-			return nil, nil, fmt.Errorf("Metric %q is blocked on Geras", name)
-		}
-	}
+func (store *OpenTSDBStore) checkMetricNames(metricNames []string, fullBlock bool) (allowed []string, warnings []error, err error) {
 	var maybeWarn []error
 	for _, name := range metricNames {
-		if !store.allowedMetricNames.MatchString(name) {
+		if store.blockedMetricNames != nil && store.blockedMetricNames.MatchString(name) {
+			if fullBlock {
+				return nil, nil, fmt.Errorf("Metric %q is blocked on Geras", name)
+			}
+			continue
+		} else if !store.allowedMetricNames.MatchString(name) {
 			maybeWarn = append(maybeWarn, fmt.Errorf("%q is not allowed via Geras", name))
 			continue
 		}

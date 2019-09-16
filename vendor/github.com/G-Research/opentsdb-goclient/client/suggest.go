@@ -65,7 +65,10 @@ func (sugResp *SuggestResponse) SetStatus(code int) {
 
 func (sugResp *SuggestResponse) GetCustomParser() func(respCnt []byte) error {
 	return func(respCnt []byte) error {
-		return json.Unmarshal([]byte(fmt.Sprintf("{%s:%s}", `"ResultInfo"`, string(respCnt))), &sugResp)
+		var results []string
+		err := json.Unmarshal(respCnt, &results)
+		sugResp.ResultInfo = results
+		return err
 	}
 }
 

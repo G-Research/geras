@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/httputil"
 	"os"
 	"regexp"
 	"strings"
@@ -19,6 +20,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/thanos-io/thanos/pkg/store/storepb"
+	"golang.org/x/net/trace"
 	"google.golang.org/grpc"
 )
 
@@ -51,6 +53,31 @@ func NewConfiguredLogger(format string, logLevel string) (log.Logger, error) {
 	return logger, nil
 }
 
+type TracedTransport struct {
+	originalTransport http.RoundTripper
+	dumpHTTPBody      bool
+}
+
+func (t TracedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if tr, ok := trace.FromContext(req.Context()); ok {
+		dumpReq, _ := httputil.DumpRequestOut(req, t.dumpHTTPBody)
+		tr.LazyPrintf("TSDB Request: %v", string(dumpReq))
+	}
+
+	res, err := t.originalTransport.RoundTrip(req)
+
+	if tr, ok := trace.FromContext(req.Context()); ok {
+		if err != nil {
+			tr.LazyPrintf("Error: %v", err)
+		} else {
+			dumpRes, _ := httputil.DumpResponse(res, t.dumpHTTPBody)
+			tr.LazyPrintf("TSDB Response: %v", string(dumpRes))
+		}
+	}
+
+	return res, err
+}
+
 type multipleStringFlags []string
 
 func (i *multipleStringFlags) String() string {
@@ -66,6 +93,8 @@ func main() {
 	// define and parse command line flags
 	grpcListenAddr := flag.String("grpc-listen", "localhost:19000", "Service will expose the Store API on this address")
 	httpListenAddr := flag.String("http-listen", "localhost:19001", "Where to serve HTTP debugging endpoints (like /metrics)")
+	traceEnabled := flag.Bool("trace-enabled", true, "Enable tracing of requests, which is shown at /debug/requests")
+	traceDumpBody := flag.Bool("trace-dumpbody", false, "Include TSDB request and response bodies in traces")
 	logFormat := flag.String("log.format", "logfmt", "Log format. One of [logfmt, json]")
 	logLevel := flag.String("log.level", "error", "Log filtering level. One of [debug, info, warn, error]")
 	openTSDBAddress := flag.String("opentsdb-address", "", "http[s]://<host>:<port>")
@@ -102,10 +131,23 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Could not initialize logger: %s", err)
 		os.Exit(1)
 	}
+	// initialize tracing
+	var transport http.RoundTripper = opentsdb.DefaultTransport
+	if *traceEnabled {
+		transport = TracedTransport{
+			originalTransport: transport,
+			dumpHTTPBody:      *traceDumpBody,
+		}
+		trace.AuthRequest = func(req *http.Request) (any, sensitive bool) {
+			return true, true
+		}
+		grpc.EnableTracing = true
+	}
 	// initialize openTSDB api client
 	client, err := opentsdb.NewClientContext(
 		config.OpenTSDBConfig{
 			OpentsdbHost: *openTSDBAddress,
+			Transport:    transport,
 		})
 	if err != nil {
 		level.Error(logger).Log("err", err)
@@ -138,6 +180,8 @@ func main() {
 	}
 	if len(*httpListenAddr) > 0 {
 		go http.ListenAndServe(*httpListenAddr, nil)
+		level.Debug(logger).Log("Debug listening on ", *httpListenAddr)
 	}
+	level.Debug(logger).Log("GRPC listening on ", *grpcListenAddr)
 	grpcSrv.Serve(l)
 }
