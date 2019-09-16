@@ -1,7 +1,7 @@
 module github.com/G-Research/geras
 
 require (
-	github.com/G-Research/opentsdb-goclient v0.0.0-20190828110221-c9d4b9754e63
+	github.com/G-Research/opentsdb-goclient v0.0.0-20190913102601-c8d547baa56d
 	github.com/OneOfOne/xxhash v1.2.5 // indirect
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20190717042225-c3de453c63f4 // indirect
@@ -25,7 +25,7 @@ require (
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/thanos-io/thanos v0.7.0
 	golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4 // indirect
-	golang.org/x/net v0.0.0-20190724013045-ca1201d0de80 // indirect
+	golang.org/x/net v0.0.0-20190724013045-ca1201d0de80
 	golang.org/x/sys v0.0.0-20190813064441-fde4db37ae7a // indirect
 	golang.org/x/tools v0.0.0-20190813034749-528a2984e271 // indirect
 	google.golang.org/grpc v1.22.1

@@ -31,7 +31,7 @@ type OpenTSDBConfig struct {
 	// A pointer of http.Tranport is used by the opentsdb client.
 	// This value is optional, and if it is not set, client.DefaultTransport, which
 	// enables tcp keepalive mode, will be used in the opentsdb client.
-	Transport *http.Transport
+	Transport http.RoundTripper
 
 	// The maximal number of datapoints which will be inserted into the opentsdb
 	// via one calling of /api/put method.

@@ -16,6 +16,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/prometheus/tsdb/chunkenc"
+	"golang.org/x/net/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -67,8 +68,8 @@ func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, reg prom
 
 type internalMetrics struct {
 	numberOfOpenTSDBMetrics prometheus.Gauge
-	openTSDBLatency *prometheus.HistogramVec
-	servedDatapoints prometheus.Counter
+	openTSDBLatency         *prometheus.HistogramVec
+	servedDatapoints        prometheus.Counter
 }
 
 func newInternalMetrics(reg prometheus.Registerer) internalMetrics {
@@ -78,7 +79,7 @@ func newInternalMetrics(reg prometheus.Registerer) internalMetrics {
 			Buckets: []float64{
 				0.01, 0.05, 0.1, 0.5, 1, 5, 10, 20, 50,
 			}},
-		  []string{"endpoint", "status"}),
+			[]string{"endpoint", "status"}),
 		servedDatapoints: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "geras_served_datapoints_total",
 		}),
@@ -86,7 +87,7 @@ func newInternalMetrics(reg prometheus.Registerer) internalMetrics {
 			Name: "geras_cached_metrics",
 		}),
 	}
-  if reg != nil {
+	if reg != nil {
 		reg.MustRegister(m.openTSDBLatency)
 		reg.MustRegister(m.servedDatapoints)
 		reg.MustRegister(m.numberOfOpenTSDBMetrics)
@@ -109,16 +110,25 @@ func (store *OpenTSDBStore) Info(
 func (store *OpenTSDBStore) Series(
 	req *storepb.SeriesRequest,
 	server storepb.Store_SeriesServer) error {
-	level.Debug(store.logger).Log("msg", "Series")
+	ctx := server.Context()
 	query, warnings, err := store.composeOpenTSDBQuery(req)
 	if err != nil {
 		level.Error(store.logger).Log("err", err)
+		if tr, ok := trace.FromContext(ctx); ok {
+			tr.LazyPrintf("Series query compose error: %v", err)
+		}
 		return err
 	}
 	if len(query.Queries) == 0 {
+		if tr, ok := trace.FromContext(ctx); ok {
+			tr.LazyPrintf("Series request resulted in no queries")
+		}
 		return nil
 	}
 	if len(warnings) > 0 {
+		if tr, ok := trace.FromContext(ctx); ok {
+			tr.LazyPrintf("Series query compose warnings: %v", warnings)
+		}
 		for _, warning := range warnings {
 			server.Send(storepb.NewWarnSeriesResponse(warning))
 		}
@@ -126,17 +136,23 @@ func (store *OpenTSDBStore) Series(
 
 	var result *opentsdb.QueryResponse
 	store.timedTSDBOp("query", func() error {
-		result, err = store.openTSDBClient.WithContext(server.Context()).Query(query)
+		result, err = store.openTSDBClient.WithContext(ctx).Query(query)
 		return err
 	})
 	if err != nil {
 		level.Error(store.logger).Log("err", err)
+		if tr, ok := trace.FromContext(ctx); ok {
+			tr.LazyPrintf("Series query error: %v", err)
+		}
 		return err
 	}
 	for _, respI := range result.QueryRespCnts {
 		res, err := convertOpenTSDBResultsToSeriesResponse(respI)
 		if err != nil {
 			level.Error(store.logger).Log("err", err)
+			if tr, ok := trace.FromContext(ctx); ok {
+				tr.LazyPrintf("Series result conversion error: %v", err)
+			}
 			return err
 		}
 		if err := server.Send(res); err != nil {
@@ -151,14 +167,14 @@ func (store *OpenTSDBStore) Series(
 func (store *OpenTSDBStore) timedTSDBOp(endpoint string, f func() error) {
 	start := time.Now()
 	err := f()
-	taken := float64(time.Since(start)/time.Second)
+	taken := float64(time.Since(start) / time.Second)
 	typeString := "success"
 	if err != nil {
 		typeString = "error"
 	}
 	store.internalMetrics.openTSDBLatency.With(
 		prometheus.Labels{
-			"status": typeString,
+			"status":   typeString,
 			"endpoint": endpoint,
 		},
 	).Observe(taken)
@@ -179,7 +195,7 @@ func (store *OpenTSDBStore) LabelNames(
 func (store *OpenTSDBStore) suggestAsList(ctx context.Context, t string) ([]string, error) {
 	var result *opentsdb.SuggestResponse
 	var err error
-	store.timedTSDBOp("suggest_" + t, func() error {
+	store.timedTSDBOp("suggest_"+t, func() error {
 		result, err = store.openTSDBClient.WithContext(ctx).Suggest(
 			opentsdb.SuggestParam{
 				Type:         t,
@@ -189,7 +205,13 @@ func (store *OpenTSDBStore) suggestAsList(ctx context.Context, t string) ([]stri
 		return err
 	})
 	if err != nil {
+		if tr, ok := trace.FromContext(ctx); ok {
+			tr.LazyPrintf("Suggest %s error: %v", t, err)
+		}
 		return nil, err
+	}
+	if tr, ok := trace.FromContext(ctx); ok {
+		tr.LazyPrintf("Suggest %s results: %d items", t, len(result.ResultInfo))
 	}
 	return result.ResultInfo, nil
 }
