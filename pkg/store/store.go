@@ -239,7 +239,11 @@ func (store *OpenTSDBStore) LabelValues(
 	ctx context.Context,
 	req *storepb.LabelValuesRequest) (*storepb.LabelValuesResponse, error) {
 	level.Debug(store.logger).Log("msg", "LabelValues", "Label", req.Label)
-	if store.enableMetricSuggestions && req.Label == "__name__" {
+	if req.Label == "__name__" {
+		if !store.enableMetricSuggestions {
+			// An error for this breaks Thanos query UI; return an empty list instead.
+			return &storepb.LabelValuesResponse{}, nil
+		}
 		var pNames []string
 		store.metricsNamesLock.RLock()
 		for _, item := range store.metricNames {
