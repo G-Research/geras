@@ -59,12 +59,14 @@ type TracedTransport struct {
 }
 
 func (t TracedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if tr, ok := trace.FromContext(req.Context()); ok {
+		dumpReq, _ := httputil.DumpRequestOut(req, t.dumpHTTPBody)
+		tr.LazyPrintf("TSDB Request: %v", string(dumpReq))
+	}
+
 	res, err := t.originalTransport.RoundTrip(req)
 
 	if tr, ok := trace.FromContext(req.Context()); ok {
-		dumpReq, _ := httputil.DumpRequest(req, t.dumpHTTPBody)
-		tr.LazyPrintf("TSDB Request: %v", string(dumpReq))
-
 		if err != nil {
 			tr.LazyPrintf("Error: %v", err)
 		} else {
