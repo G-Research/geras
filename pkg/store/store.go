@@ -10,16 +10,17 @@ import (
 	"sync"
 	"time"
 
-	opentsdb "github.com/G-Research/opentsdb-goclient/client"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/improbable-eng/thanos/pkg/store/prompb"
-	"github.com/improbable-eng/thanos/pkg/store/storepb"
+	"github.com/thanos-io/thanos/pkg/store/storepb"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/prometheus/prompb"
 	"github.com/prometheus/tsdb/chunkenc"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	opentsdb "github.com/G-Research/opentsdb-goclient/client"
 )
 
 type OpenTSDBStore struct {
