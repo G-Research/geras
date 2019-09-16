@@ -12,10 +12,10 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/thanos-io/thanos/pkg/store/storepb"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/prometheus/tsdb/chunkenc"
+	"github.com/thanos-io/thanos/pkg/store/storepb"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -46,24 +46,36 @@ func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, reg prom
 		allowedMetricNames:      allowedMetricNames,
 		blockedMetricNames:      blockedMetricNames,
 	}
-	err := store.loadAllMetricNames(context.TODO())
-	if err != nil {
-		level.Info(store.logger).Log("err", err)
+	store.updateMetrics(context.Background(), logger)
+	return store
+}
+
+func (store *OpenTSDBStore) updateMetrics(ctx context.Context, logger log.Logger) {
+	events := trace.NewEventLog("store.updateMetrics", "")
+
+	fetch := func() {
+		events.Printf("Refresh metrics")
+		tr := trace.New("store.updateMetrics", "fetch")
+		defer tr.Finish()
+		err := store.loadAllMetricNames(trace.NewContext(ctx, tr))
+		if err != nil {
+			level.Info(store.logger).Log("err", err)
+			events.Errorf("error: %v", err)
+		} else {
+			level.Debug(logger).Log("msg", "metric names have been refreshed")
+			events.Printf("Refreshed")
+		}
 	}
+	fetch()
+
 	if store.metricRefreshInterval >= 0 {
 		go func() {
 			for {
-				err := store.loadAllMetricNames(context.TODO())
-				if err != nil {
-					level.Info(store.logger).Log("err", err)
-				} else {
-					level.Debug(logger).Log("msg", "metric names have been refreshed")
-				}
 				time.Sleep(store.metricRefreshInterval)
+				fetch()
 			}
 		}()
 	}
-	return store
 }
 
 type internalMetrics struct {
