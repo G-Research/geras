@@ -102,8 +102,12 @@ func (store *OpenTSDBStore) Info(
 		MaxTime: math.MaxInt64,
 		Labels:  store.storeLabels,
 	}
-	level.Debug(store.logger).Log("msg", "Info")
-	return &res, nil
+	var err error
+	store.timedTSDBOp("info", func() error {
+		_, err = store.openTSDBClient.WithContext(ctx).Version()
+		return err
+	})
+	return &res, err
 }
 
 func (store *OpenTSDBStore) Series(
