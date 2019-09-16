@@ -135,7 +135,7 @@ func (store *OpenTSDBStore) Series(
 
 	var result *opentsdb.QueryResponse
 	store.timedTSDBOp("query", func() error {
-		result, err = store.openTSDBClient.WithContext(server.Context()).Query(query)
+		result, err = store.openTSDBClient.WithContext(ctx).Query(query)
 		return err
 	})
 	if err != nil {
