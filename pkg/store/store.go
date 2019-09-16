@@ -117,7 +117,7 @@ func (store *OpenTSDBStore) Info(
 		Labels:  store.storeLabels,
 	}
 	var err error
-	store.timedTSDBOp("info", func() error {
+	store.timedTSDBOp("version", func() error {
 		_, err = store.openTSDBClient.WithContext(ctx).Version()
 		return err
 	})
