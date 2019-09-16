@@ -67,7 +67,7 @@ func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, reg prom
 }
 
 type internalMetrics struct {
-	numberOfOpenTSDBMetrics prometheus.Gauge
+	numberOfOpenTSDBMetrics *prometheus.GaugeVec
 	openTSDBLatency         *prometheus.HistogramVec
 	servedDatapoints        prometheus.Counter
 }
@@ -83,9 +83,10 @@ func newInternalMetrics(reg prometheus.Registerer) internalMetrics {
 		servedDatapoints: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "geras_served_datapoints_total",
 		}),
-		numberOfOpenTSDBMetrics: prometheus.NewGauge(prometheus.GaugeOpts{
+		numberOfOpenTSDBMetrics: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Name: "geras_cached_metrics",
-		}),
+		},
+			[]string{"type"}),
 	}
 	if reg != nil {
 		reg.MustRegister(m.openTSDBLatency)
@@ -239,10 +240,21 @@ func (store *OpenTSDBStore) loadAllMetricNames(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	store.internalMetrics.numberOfOpenTSDBMetrics.With(prometheus.Labels{
+		"type": "retrieved",
+	}).Set(float64(len(metricNames)))
+
+	metricNames, _, err = store.checkMetricNames(metricNames, false)
+	if err != nil {
+		return err
+	}
+
 	store.metricsNamesLock.Lock()
 	store.metricNames = metricNames
+	store.internalMetrics.numberOfOpenTSDBMetrics.With(prometheus.Labels{
+		"type": "served",
+	}).Set(float64(len(store.metricNames)))
 	store.metricsNamesLock.Unlock()
-	store.internalMetrics.numberOfOpenTSDBMetrics.Set(float64(len(store.metricNames)))
 	return nil
 }
 
@@ -307,7 +319,7 @@ func (store *OpenTSDBStore) composeOpenTSDBQuery(req *storepb.SeriesRequest) (op
 		return opentsdb.QueryParam{}, nil, err
 	}
 	var warnings []error
-	metricNames, warnings, err = store.checkMetricNames(metricNames)
+	metricNames, warnings, err = store.checkMetricNames(metricNames, true)
 	if err != nil {
 		level.Info(store.logger).Log("err", err)
 		return opentsdb.QueryParam{}, nil, err
@@ -334,15 +346,15 @@ func (store *OpenTSDBStore) composeOpenTSDBQuery(req *storepb.SeriesRequest) (op
 	return query, warnings, nil
 }
 
-func (store *OpenTSDBStore) checkMetricNames(metricNames []string) (allowed []string, warnings []error, err error) {
-	for _, name := range metricNames {
-		if store.blockedMetricNames != nil && store.blockedMetricNames.MatchString(name) {
-			return nil, nil, fmt.Errorf("Metric %q is blocked on Geras", name)
-		}
-	}
+func (store *OpenTSDBStore) checkMetricNames(metricNames []string, fullBlock bool) (allowed []string, warnings []error, err error) {
 	var maybeWarn []error
 	for _, name := range metricNames {
-		if !store.allowedMetricNames.MatchString(name) {
+		if store.blockedMetricNames != nil && store.blockedMetricNames.MatchString(name) {
+			if fullBlock {
+				return nil, nil, fmt.Errorf("Metric %q is blocked on Geras", name)
+			}
+			continue
+		} else if !store.allowedMetricNames.MatchString(name) {
 			maybeWarn = append(maybeWarn, fmt.Errorf("%q is not allowed via Geras", name))
 			continue
 		}
