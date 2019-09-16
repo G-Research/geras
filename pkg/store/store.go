@@ -51,19 +51,19 @@ func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, reg prom
 }
 
 type internalMetrics struct {
-	numberOfOpenTSDBMetrics *prometheus.GaugeVec
+	numberOfOpenTSDBMetrics     *prometheus.GaugeVec
 	lastUpdateOfOpenTSDBMetrics prometheus.Gauge
-	openTSDBLatency         *prometheus.HistogramVec
-	servedDatapoints        prometheus.Counter
+	openTSDBLatency             *prometheus.HistogramVec
+	servedDatapoints            prometheus.Counter
 }
 
 func newInternalMetrics(reg prometheus.Registerer) internalMetrics {
 	m := internalMetrics{
 		openTSDBLatency: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{Name: "geras_opentsdb_request_latency_seconds",
-			Buckets: []float64{
-				0.01, 0.05, 0.1, 0.5, 1, 5, 10, 20, 50,
-			}},
+				Buckets: []float64{
+					0.01, 0.05, 0.1, 0.5, 1, 5, 10, 20, 50,
+				}},
 			[]string{"endpoint", "status"}),
 		servedDatapoints: prometheus.NewCounter(prometheus.CounterOpts{Name: "geras_served_datapoints_total"}),
 		numberOfOpenTSDBMetrics: prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "geras_cached_metrics"},
@@ -86,7 +86,7 @@ func (store *OpenTSDBStore) updateMetrics(ctx context.Context, logger log.Logger
 		events.Printf("Refresh metrics")
 		tr := trace.New("store.updateMetrics", "fetch")
 		defer tr.Finish()
-		ctx, cancel := context.WithTimeout(ctx, 60 * time.Second)
+		ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 		defer cancel()
 		err := store.loadAllMetricNames(trace.NewContext(ctx, tr))
 		if err != nil {
