@@ -21,6 +21,12 @@ After the build you will have a self-contained binary (`geras`). It writes logs 
 ```
   -grpc-listen string
         Service will expose the Store API on this address (default "localhost:19000")
+  -http-listen string
+        Where to serve HTTP debugging endpoints (like /metrics) (default "localhost:19001")
+  -trace-enabled
+        Enable tracing of requests, which is shown at /debug/requests (default true)
+  -trace-dumpbody
+        Include TSDB request and response bodies in traces (can be expensive) (default false)
   -label value
         Label to expose on the Store API, of the form '<key>=<value>'. May be repeated.
   -log.format string
@@ -29,6 +35,8 @@ After the build you will have a self-contained binary (`geras`). It writes logs 
         Log filtering level. One of [debug, info, warn, error] (default "error")
   -metrics-refresh-interval duration
         Time between metric name refreshes. Use negative duration to disable refreshes. (default 15m0s)
+  -metrics-suggestions
+        Enable metric suggestions (can be expensive) (default true)
   -opentsdb-address string
         http[s]://<host>:<port>
   -metrics-allowed-regexp regexp

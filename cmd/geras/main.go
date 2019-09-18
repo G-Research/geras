@@ -94,7 +94,7 @@ func main() {
 	grpcListenAddr := flag.String("grpc-listen", "localhost:19000", "Service will expose the Store API on this address")
 	httpListenAddr := flag.String("http-listen", "localhost:19001", "Where to serve HTTP debugging endpoints (like /metrics)")
 	traceEnabled := flag.Bool("trace-enabled", true, "Enable tracing of requests, which is shown at /debug/requests")
-	traceDumpBody := flag.Bool("trace-dumpbody", false, "Include TSDB request and response bodies in traces")
+	traceDumpBody := flag.Bool("trace-dumpbody", false, "Include TSDB request and response bodies in traces (can be expensive)")
 	logFormat := flag.String("log.format", "logfmt", "Log format. One of [logfmt, json]")
 	logLevel := flag.String("log.level", "error", "Log filtering level. One of [debug, info, warn, error]")
 	openTSDBAddress := flag.String("opentsdb-address", "", "http[s]://<host>:<port>")
