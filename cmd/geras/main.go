@@ -97,7 +97,7 @@ func main() {
 	traceDumpBody := flag.Bool("trace-dumpbody", false, "Include TSDB request and response bodies in traces (can be expensive)")
 	logFormat := flag.String("log.format", "logfmt", "Log format. One of [logfmt, json]")
 	logLevel := flag.String("log.level", "error", "Log filtering level. One of [debug, info, warn, error]")
-	openTSDBAddress := flag.String("opentsdb-address", "", "http[s]://<host>:<port>")
+	openTSDBAddress := flag.String("opentsdb-address", "", "<host>:<port>")
 	refreshInterval := flag.Duration("metrics-refresh-interval", time.Minute*15,
 		"Time between metric name refreshes. Use negative duration to disable refreshes.")
 	allowedMetricNamesRE := flag.String("metrics-allowed-regexp", ".*", "Regexp of metrics to allow")

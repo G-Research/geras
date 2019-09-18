@@ -14,4 +14,4 @@ usage_flags="$(egrep '^\s*-' <<< "$usage" | sort | awk '{print $1}')"
 
 echo  "Testing flags ./geras vs README.md:"
 # Exit code of diff is the result of the test
-diff -u <(cat <<< "$usage_flags") <(cat <<< "$readme_flags") && echo "OK"
+diff -u <(cat <<<"$usage_flags") <(cat <<<"$readme_flags") && echo "OK"
