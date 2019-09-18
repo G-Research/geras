@@ -38,7 +38,7 @@ After the build you will have a self-contained binary (`geras`). It writes logs 
   -metrics-suggestions
         Enable metric suggestions (can be expensive) (default true)
   -opentsdb-address string
-        http[s]://<host>:<port>
+        <host>:<port>
   -metrics-allowed-regexp regexp
         A regular expression specifying the allowed metrics. Default is `.*`,
         i.e. everything. A good value if your metric names all match OpenTSDB
