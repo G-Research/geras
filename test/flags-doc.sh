@@ -6,7 +6,7 @@ if ! [[ -f README.md ]] || ! [[ -f geras ]]; then
   exit 1
 fi
 
-readme="$(perl -ne'/^##/ and $usage = 0; /^## Usage/ and $usage = 1; print if $usage' README.md)"
+readme="$(sed -n '/^## Usage/,/^#/p' README.md)"
 usage="$(./geras -help 2>&1)"
 
 readme_flags="$(egrep '^\s*-' <<< "$readme" | sort | awk '{print $1}')"
