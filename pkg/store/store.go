@@ -18,6 +18,7 @@ import (
 	"github.com/thanos-io/thanos/pkg/store/storepb"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc/codes"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
 
 	opentsdb "github.com/G-Research/opentsdb-goclient/client"
@@ -33,9 +34,10 @@ type OpenTSDBStore struct {
 	allowedMetricNames, blockedMetricNames *regexp.Regexp
 	enableMetricSuggestions                bool
 	storeLabels                            []storepb.Label
+	healthcheckMetric                      string
 }
 
-func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, reg prometheus.Registerer, interval time.Duration, storeLabels []storepb.Label, allowedMetricNames, blockedMetricNames *regexp.Regexp, enableMetricSuggestions bool) *OpenTSDBStore {
+func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, reg prometheus.Registerer, interval time.Duration, storeLabels []storepb.Label, allowedMetricNames, blockedMetricNames *regexp.Regexp, enableMetricSuggestions bool, healthcheckMetric string) *OpenTSDBStore {
 	store := &OpenTSDBStore{
 		logger:                  log.With(logger, "component", "opentsdb"),
 		openTSDBClient:          client,
@@ -45,6 +47,7 @@ func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, reg prom
 		storeLabels:             storeLabels,
 		allowedMetricNames:      allowedMetricNames,
 		blockedMetricNames:      blockedMetricNames,
+		healthcheckMetric:       healthcheckMetric,
 	}
 	store.updateMetrics(context.Background(), logger)
 	return store
@@ -117,11 +120,29 @@ func (store *OpenTSDBStore) Info(
 		Labels:  store.storeLabels,
 	}
 	var err error
-	store.timedTSDBOp("version", func() error {
-		_, err = store.openTSDBClient.WithContext(ctx).Version()
+	store.timedTSDBOp("query_last", func() error {
+		subqueries := make([]opentsdb.SubQueryLast, 1)
+		subqueries[0] = opentsdb.SubQueryLast{
+			Metric: store.healthcheckMetric,
+		}
+		q := opentsdb.QueryLastParam{
+			Queries: subqueries,
+		}
+		_, err = store.openTSDBClient.WithContext(ctx).QueryLast(q)
 		return err
 	})
 	return &res, err
+}
+
+func (store *OpenTSDBStore) Ready(
+	ctx context.Context,
+	req *healthpb.HealthCheckRequest,
+) (*healthpb.HealthCheckResponse, error) {
+	_, err := store.Info(ctx, &storepb.InfoRequest{})
+	if err != nil {
+		return &healthpb.HealthCheckResponse{Status: healthpb.HealthCheckResponse_NOT_SERVING}, err
+	}
+	return &healthpb.HealthCheckResponse{Status: healthpb.HealthCheckResponse_SERVING}, nil
 }
 
 func (store *OpenTSDBStore) Series(
