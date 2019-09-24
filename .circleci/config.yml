@@ -13,14 +13,17 @@ jobs:
           keys:
             - pkg-cache
       - run:
+          name: Build using vendor directory
+          command: go build -mod=vendor ./cmd/geras
+      - run:
           name: Build using go modules 
           command: go build ./...
       - run:
-          name: Build using vendor directory
-          command: go build -mod=vendor ./... 
-      - run:
           name: Run unit tests 
           command: go test ./pkg/... 
+      - run:
+          name: Check flags are documented
+          command: test/flags-doc.sh
       - save_cache: 
           key: pkg-cache
           paths:
