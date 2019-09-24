@@ -27,6 +27,8 @@ After the build you will have a self-contained binary (`geras`). It writes logs 
         Log format. One of [logfmt, json] (default "logfmt")
   -log.level string
         Log filtering level. One of [debug, info, warn, error] (default "error")
+  -healthcheck-metric
+        A metric to query as a readiness health check (default "tsd.rpc.recieved")
   -metrics-refresh-interval duration
         Time between metric name refreshes. Use negative duration to disable refreshes. (default 15m0s)
   -opentsdb-address string
