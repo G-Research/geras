@@ -24,6 +24,9 @@ jobs:
       - run:
           name: Check flags are documented
           command: test/flags-doc.sh
+      - run:
+          name: Docker build
+          command: docker build -t G-Research/geras:$CIRCLE_BRANCH .
       - save_cache: 
           key: pkg-cache
           paths:
