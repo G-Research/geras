@@ -26,7 +26,7 @@ jobs:
           command: test/flags-doc.sh
       - run:
           name: Docker build
-          command: docker build -t G-Research/geras:$CIRCLE_BRANCH .
+          command: docker build -t g-research/geras:$CIRCLE_BRANCH .
       - save_cache: 
           key: pkg-cache
           paths:
