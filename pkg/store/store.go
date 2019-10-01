@@ -122,15 +122,19 @@ func (store *OpenTSDBStore) Info(
 		Labels:  store.storeLabels,
 	}
 	var err error
-	store.timedTSDBOp("query_last", func() error {
-		subqueries := make([]opentsdb.SubQueryLast, 1)
-		subqueries[0] = opentsdb.SubQueryLast{
-			Metric: store.healthcheckMetric,
+	store.timedTSDBOp("query", func() error {
+		subqueries := make([]opentsdb.SubQuery, 1)
+		subqueries[0] = opentsdb.SubQuery{
+			Metric:     store.healthcheckMetric,
+			Aggregator: "sum",
+			Downsample: "last",
 		}
-		q := opentsdb.QueryLastParam{
+		q := opentsdb.QueryParam{
+			Start:   time.Now().Unix,
+			End:     time.Now().Unix,
 			Queries: subqueries,
 		}
-		_, err = store.openTSDBClient.WithContext(ctx).QueryLast(q)
+		_, err = store.openTSDBClient.WithContext(ctx).Query(q)
 		return err
 	})
 	return &res, err
@@ -140,10 +144,6 @@ func (store *OpenTSDBStore) Ready(
 	ctx context.Context,
 	req *healthpb.HealthCheckRequest,
 ) (*healthpb.HealthCheckResponse, error) {
-	_, err := store.Info(ctx, &storepb.InfoRequest{})
-	if err != nil {
-		return &healthpb.HealthCheckResponse{Status: healthpb.HealthCheckResponse_NOT_SERVING}, err
-	}
 	return &healthpb.HealthCheckResponse{Status: healthpb.HealthCheckResponse_SERVING}, nil
 }
 
