@@ -140,11 +140,12 @@ func (store *OpenTSDBStore) Info(
 	return &res, err
 }
 
-func (store *OpenTSDBStore) Ready(
-	ctx context.Context,
-	req *healthpb.HealthCheckRequest,
-) (*healthpb.HealthCheckResponse, error) {
+func (store OpenTSDBStore) Check(ctx context.Context, req *healthpb.HealthCheckRequest) (*healthpb.HealthCheckResponse, error) {
 	return &healthpb.HealthCheckResponse{Status: healthpb.HealthCheckResponse_SERVING}, nil
+}
+
+func (store OpenTSDBStore) Watch(req *healthpb.HealthCheckRequest, srv healthpb.Health_WatchServer) error {
+	return status.Errorf(codes.Unimplemented, "method Watch not implemented")
 }
 
 func (store *OpenTSDBStore) Series(
