@@ -24,6 +24,15 @@ jobs:
       - run:
           name: Check flags are documented
           command: test/flags-doc.sh
+
+      # Create a docker environment we can use to build docker images
+      # See https://circleci.com/docs/2.0/building-docker-images/
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Docker build
+          command: docker build -t g-research/geras:$CIRCLE_BRANCH .
+
       - save_cache: 
           key: pkg-cache
           paths:
