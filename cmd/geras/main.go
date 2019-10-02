@@ -22,6 +22,7 @@ import (
 	"github.com/thanos-io/thanos/pkg/store/storepb"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
 
 func NewConfiguredLogger(format string, logLevel string) (log.Logger, error) {
@@ -97,6 +98,7 @@ func main() {
 	traceDumpBody := flag.Bool("trace-dumpbody", false, "Include TSDB request and response bodies in traces (can be expensive)")
 	logFormat := flag.String("log.format", "logfmt", "Log format. One of [logfmt, json]")
 	logLevel := flag.String("log.level", "error", "Log filtering level. One of [debug, info, warn, error]")
+	healthcheckMetric := flag.String("healthcheck-metric", "tsd.rpc.received", "A metric to query as a readiness health check.")
 	openTSDBAddress := flag.String("opentsdb-address", "", "<host>:<port>")
 	refreshInterval := flag.Duration("metrics-refresh-interval", time.Minute*15,
 		"Time between metric name refreshes. Use negative duration to disable refreshes.")
@@ -170,9 +172,10 @@ func main() {
 	http.Handle("/metrics", promhttp.Handler())
 
 	// create openTSDBStore and expose its api on a grpc server
-	srv := store.NewOpenTSDBStore(logger, client, prometheus.DefaultRegisterer, *refreshInterval, storeLabels, allowedMetricNames, blockedMetricNames, *enableMetricSuggestions)
+	srv := store.NewOpenTSDBStore(logger, client, prometheus.DefaultRegisterer, *refreshInterval, storeLabels, allowedMetricNames, blockedMetricNames, *enableMetricSuggestions, *healthcheckMetric)
 	grpcSrv := grpc.NewServer()
 	storepb.RegisterStoreServer(grpcSrv, srv)
+	healthpb.RegisterHealthServer(grpcSrv, srv)
 	l, err := net.Listen("tcp", *grpcListenAddr)
 	if err != nil {
 		level.Error(logger).Log("err", err)

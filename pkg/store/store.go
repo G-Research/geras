@@ -18,6 +18,7 @@ import (
 	"github.com/thanos-io/thanos/pkg/store/storepb"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc/codes"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
 
 	opentsdb "github.com/G-Research/opentsdb-goclient/client"
@@ -33,9 +34,10 @@ type OpenTSDBStore struct {
 	allowedMetricNames, blockedMetricNames *regexp.Regexp
 	enableMetricSuggestions                bool
 	storeLabels                            []storepb.Label
+	healthcheckMetric                      string
 }
 
-func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, reg prometheus.Registerer, interval time.Duration, storeLabels []storepb.Label, allowedMetricNames, blockedMetricNames *regexp.Regexp, enableMetricSuggestions bool) *OpenTSDBStore {
+func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, reg prometheus.Registerer, interval time.Duration, storeLabels []storepb.Label, allowedMetricNames, blockedMetricNames *regexp.Regexp, enableMetricSuggestions bool, healthcheckMetric string) *OpenTSDBStore {
 	store := &OpenTSDBStore{
 		logger:                  log.With(logger, "component", "opentsdb"),
 		openTSDBClient:          client,
@@ -45,6 +47,7 @@ func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, reg prom
 		storeLabels:             storeLabels,
 		allowedMetricNames:      allowedMetricNames,
 		blockedMetricNames:      blockedMetricNames,
+		healthcheckMetric:       healthcheckMetric,
 	}
 	store.updateMetrics(context.Background(), logger)
 	return store
@@ -119,11 +122,28 @@ func (store *OpenTSDBStore) Info(
 		Labels:  store.storeLabels,
 	}
 	var err error
-	store.timedTSDBOp("version", func() error {
-		_, err = store.openTSDBClient.WithContext(ctx).Version()
+	store.timedTSDBOp("query", func() error {
+		now := time.Now().Unix()
+		q := opentsdb.QueryParam{
+			Start: now,
+			End:   now + 1,
+			Queries: []opentsdb.SubQuery{{
+				Metric:     store.healthcheckMetric,
+				Aggregator: "sum",
+			}},
+		}
+		_, err = store.openTSDBClient.WithContext(ctx).Query(q)
 		return err
 	})
 	return &res, err
+}
+
+func (store OpenTSDBStore) Check(ctx context.Context, req *healthpb.HealthCheckRequest) (*healthpb.HealthCheckResponse, error) {
+	return &healthpb.HealthCheckResponse{Status: healthpb.HealthCheckResponse_SERVING}, nil
+}
+
+func (store OpenTSDBStore) Watch(req *healthpb.HealthCheckRequest, srv healthpb.Health_WatchServer) error {
+	return status.Errorf(codes.Unimplemented, "method Watch not implemented")
 }
 
 func (store *OpenTSDBStore) Series(

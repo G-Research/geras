@@ -7,6 +7,9 @@ RUN go build -mod=vendor -ldflags '-extldflags "-static"' -o geras ./cmd/geras/m
 
 # final stage
 FROM alpine
-WORKDIR /app
-COPY --from=build-env /src/geras /app/
+WORKDIR /bin
+COPY --from=build-env /src/geras /bin/
+RUN GRPC_HEALTH_PROBE_VERSION=v0.3.0 && \
+    wget -qO/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/${GRPC_HEALTH_PROBE_VERSION}/grpc_health_probe-linux-amd64 && \
+    chmod +x /bin/grpc_health_probe
 ENTRYPOINT ["./geras"]
