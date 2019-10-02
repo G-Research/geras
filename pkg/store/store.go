@@ -123,16 +123,14 @@ func (store *OpenTSDBStore) Info(
 	}
 	var err error
 	store.timedTSDBOp("query", func() error {
-		subqueries := make([]opentsdb.SubQuery, 1)
-		subqueries[0] = opentsdb.SubQuery{
-			Metric:     store.healthcheckMetric,
-			Aggregator: "sum",
-			Downsample: "last",
-		}
+		now := time.Now().Unix()
 		q := opentsdb.QueryParam{
-			Start:   time.Now().Unix(),
-			End:     time.Now().Unix(),
-			Queries: subqueries,
+			Start: now,
+			End:   now + 1,
+			Queries: []opentsdb.SubQuery{{
+				Metric:     store.healthcheckMetric,
+				Aggregator: "sum",
+			}},
 		}
 		_, err = store.openTSDBClient.WithContext(ctx).Query(q)
 		return err
