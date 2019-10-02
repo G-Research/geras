@@ -130,8 +130,8 @@ func (store *OpenTSDBStore) Info(
 			Downsample: "last",
 		}
 		q := opentsdb.QueryParam{
-			Start:   time.Now().Unix,
-			End:     time.Now().Unix,
+			Start:   time.Now().Unix(),
+			End:     time.Now().Unix(),
 			Queries: subqueries,
 		}
 		_, err = store.openTSDBClient.WithContext(ctx).Query(q)
