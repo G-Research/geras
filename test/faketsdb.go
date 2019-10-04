@@ -22,7 +22,7 @@ func main() {
 	http.HandleFunc("/api/version", jsonWrap(version))
 	http.HandleFunc("/api/query", jsonWrap(bodyReader(query)))
 	http.HandleFunc("/api/query/last", jsonWrap(bodyReader(queryLast)))
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(":4242", nil))
 }
 
 func jsonWrap(f func (r *http.Request) interface{}) func(w http.ResponseWriter, r *http.Request) {
