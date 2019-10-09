@@ -20,8 +20,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	opentsdb "github.com/G-Research/opentsdb-goclient/client"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/G-Research/geras/pkg/regexputil"
 )
@@ -311,9 +311,9 @@ func (store *OpenTSDBStore) getMatchingMetricNames(matcher storepb.LabelMatcher)
 		return []string{value}, nil
 	} else if matcher.Type == storepb.LabelMatcher_NEQ {
 		// we can support this, but we should not.
-		return nil, errors.New("NEQ is not supported for __name__ label")
+		return nil, errors.New("NEQ (!=) is not supported for __name__")
 	} else if matcher.Type == storepb.LabelMatcher_NRE {
-		return nil, errors.New("NRE is not supported for __name__ label")
+		return nil, errors.New("NRE (!~) is not supported for __name__")
 	} else if matcher.Type == storepb.LabelMatcher_RE {
 		// TODO: Regexp matchers working on the actual name seems like the least
 		// surprising behaviour. Actually document this.
@@ -470,7 +470,7 @@ func convertPromQLMatcherToFilter(matcher storepb.LabelMatcher) (opentsdb.Filter
 		}
 		items, ok := rx.List()
 		if !ok {
-			return opentsdb.Filter{}, errors.New("NRE (!~) is not supported for general regexps")
+			return opentsdb.Filter{}, errors.New("NRE (!~) is not supported for general regexps, only fixed alternatives like '(a|b)'")
 		}
 		f.Type = "not_literal_or"
 		f.FilterExp = strings.Join(items, "|")
