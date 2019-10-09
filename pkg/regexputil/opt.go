@@ -21,9 +21,6 @@ func Parse(regexp string) (Regexp, error) {
 	return Regexp{pt: pt}, nil
 }
 
-// We only handle full matches on single lines as that's what Prometheus uses.
-// ^ and $ are therefore meaningless, but people do use them, so ignore if in the correct place.
-
 // List returns a list of fixed matches if the regexp only matches a fixed set
 // of alternate strings.
 func (r Regexp) List() ([]string, bool) {
@@ -45,7 +42,7 @@ func (r Regexp) recurse(p []*syntax.Regexp, parentOp syntax.Op, level int) [][]r
 		return nil
 	}
 	for i, s := range p {
-		// Deal with (?i), etc.
+		// Ignore (?i), etc.
 		if (s.Flags & (syntax.FoldCase|syntax.DotNL)) != 0 {
 			return nil
 		}
@@ -75,6 +72,8 @@ func (r Regexp) recurse(p []*syntax.Regexp, parentOp syntax.Op, level int) [][]r
 				return nil
 			}
 			potential = append(potential, []rune{})
+		// We only handle full matches on single lines as that's what Prometheus uses.
+		// ^ and $ are therefore meaningless, but people do use them, so ignore if in the correct place.
 		case syntax.OpBeginText:
 			if i != 0 {
 				// invalid, skip
