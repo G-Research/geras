@@ -2,22 +2,22 @@
 package regexputil
 
 import (
-  "regexp/syntax"
+	"regexp/syntax"
 )
 
 // Regexp represents a parsed regexp. Use Parse to make one.
 type Regexp struct {
-  pt *syntax.Regexp
+	pt *syntax.Regexp
 }
 
 // Parse takes a regexp in Perl syntax (as implemented by regexp/syntax) and
 // returns a Regexp, for introspecting the regexp.
 func Parse(regexp string) (Regexp, error) {
-  pt, err := syntax.Parse(regexp, syntax.Perl)
+	pt, err := syntax.Parse(regexp, syntax.Perl)
 	if err != nil {
 		return Regexp{}, err
 	}
-  pt = pt.Simplify()
+	pt = pt.Simplify()
 	return Regexp{pt: pt}, nil
 }
 
@@ -43,7 +43,7 @@ func (r Regexp) recurse(p []*syntax.Regexp, parentOp syntax.Op, level int) [][]r
 	}
 	for i, s := range p {
 		// Ignore (?i), etc.
-		if (s.Flags & (syntax.FoldCase|syntax.DotNL)) != 0 {
+		if (s.Flags & (syntax.FoldCase | syntax.DotNL)) != 0 {
 			return nil
 		}
 		switch s.Op {
@@ -62,6 +62,17 @@ func (r Regexp) recurse(p []*syntax.Regexp, parentOp syntax.Op, level int) [][]r
 				return nil
 			}
 			potential = r.recurse(s.Sub, s.Op, level+1)
+		case syntax.OpCharClass:
+			if len(potential) > 0 && parentOp != syntax.OpAlternate {
+				return nil
+			}
+			// Rune is a list of pairs of character ranges in this case, we have to expand
+			for i := 0; i < len(s.Rune); i += 2 {
+				start, end := s.Rune[i], s.Rune[i+1]
+				for r := start; r <= end; r++ {
+					potential = append(potential, []rune{r})
+				}
+			}
 		case syntax.OpLiteral:
 			if len(potential) > 0 && parentOp != syntax.OpAlternate {
 				return nil
@@ -80,7 +91,7 @@ func (r Regexp) recurse(p []*syntax.Regexp, parentOp syntax.Op, level int) [][]r
 				return nil
 			}
 		case syntax.OpEndText:
-			if i != len(p) - 1 {
+			if i != len(p)-1 {
 				// invalid, skip
 				return nil
 			}
