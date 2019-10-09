@@ -37,7 +37,7 @@ func (r Regexp) List() ([]string, bool) {
 
 func (r Regexp) recurse(p []*syntax.Regexp, parentOp syntax.Op, level int) [][]rune {
 	var potential [][]rune
-	// Concat, Capture, Alternate is the most we handle
+	// Concat, Capture, Alternate, (a leaf op) is the most we handle
 	if level > 3 {
 		return nil
 	}
