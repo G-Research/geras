@@ -18,10 +18,12 @@ import (
 	"github.com/thanos-io/thanos/pkg/store/storepb"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc/codes"
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
 
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	opentsdb "github.com/G-Research/opentsdb-goclient/client"
+
+	"github.com/G-Research/geras/pkg/regexputil"
 )
 
 type OpenTSDBStore struct {
@@ -311,7 +313,7 @@ func (store *OpenTSDBStore) getMatchingMetricNames(matcher storepb.LabelMatcher)
 		// we can support this, but we should not.
 		return nil, errors.New("NEQ is not supported for __name__ label")
 	} else if matcher.Type == storepb.LabelMatcher_NRE {
-		return nil, errors.New("NRE is not supported")
+		return nil, errors.New("NRE is not supported for __name__ label")
 	} else if matcher.Type == storepb.LabelMatcher_RE {
 		// TODO: Regexp matchers working on the actual name seems like the least
 		// surprising behaviour. Actually document this.
@@ -462,7 +464,16 @@ func convertPromQLMatcherToFilter(matcher storepb.LabelMatcher) (opentsdb.Filter
 		f.Type = "not_literal_or"
 		f.FilterExp = matcher.Value
 	case storepb.LabelMatcher_NRE:
-		return opentsdb.Filter{}, errors.New("LabelMatcher_NRE is not supported")
+		rx, err := regexputil.Parse(matcher.Value)
+		if err != nil {
+			return opentsdb.Filter{}, err
+		}
+		items, ok := rx.List()
+		if !ok {
+			return opentsdb.Filter{}, errors.New("NRE (!~) is not supported for general regexps")
+		}
+		f.Type = "not_literal_or"
+		f.FilterExp = strings.Join(items, "|")
 	case storepb.LabelMatcher_RE:
 		f.Type = "regexp"
 		f.FilterExp = matcher.Value
