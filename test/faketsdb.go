@@ -41,7 +41,7 @@ var fakeMetrics = []string{}
 
 var (
 	flagNumberMetrics = flag.Int("number-of-metrics", 1000000, "How many metrics to invent")
-	flagListen = flag.String("listen", ":4242", "Where HTTP service should listen")
+	flagListen        = flag.String("listen", ":4242", "Where HTTP service should listen")
 )
 
 func main() {
@@ -59,7 +59,7 @@ func main() {
 	log.Fatal(http.ListenAndServe(*flagListen, nil))
 }
 
-func jsonMarshal(f func (r *http.Request) interface{}) func(w http.ResponseWriter, r *http.Request) {
+func jsonMarshal(f func(r *http.Request) interface{}) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%s %s", r.Method, r.URL)
 		w.Header().Set("Content-Type", "application/json")
@@ -73,8 +73,8 @@ func jsonMarshal(f func (r *http.Request) interface{}) func(w http.ResponseWrite
 	}
 }
 
-func bodyReader(f func (r *http.Request, body []byte) interface{}) func (r *http.Request) interface{} {
-	return func (r *http.Request) interface{} {
+func bodyReader(f func(r *http.Request, body []byte) interface{}) func(r *http.Request) interface{} {
+	return func(r *http.Request) interface{} {
 		if r.Method == "POST" {
 			body, err := ioutil.ReadAll(r.Body)
 			if err != nil {
@@ -157,44 +157,44 @@ func getResults(start, end int, q client.SubQuery) []client.QueryRespItem {
 				"x": "a",
 			},
 			AggregatedTags: []string{},
-			Dps: dp,
+			Dps:            dp,
 		})
 	case 'b':
 		// Extra tags
 		for _, tags := range []map[string]string{
-			{ "x": "a", "y": "y" },
-			{ "x": "a", "y": "z" },
+			{"x": "a", "y": "y"},
+			{"x": "a", "y": "z"},
 		} {
 			results = append(results, client.QueryRespItem{
-				Metric: q.Metric,
-				Tags: tags,
+				Metric:         q.Metric,
+				Tags:           tags,
 				AggregatedTags: []string{},
-				Dps: dp,
+				Dps:            dp,
 			})
 		}
 	case 'c':
 		// Extra tags, different values (i.e. two different timeseries)
 		dps := []map[string]interface{}{
 			dp,
-			mutateDatapoints(dp, func (x int) int { return x * 2 }),
+			mutateDatapoints(dp, func(x int) int { return x * 2 }),
 		}
 		for i, tags := range []map[string]string{
-			{ "x": "a", "y": "y" },
-			{ "x": "a", "y": "z" },
+			{"x": "a", "y": "y"},
+			{"x": "a", "y": "z"},
 		} {
 			results = append(results, client.QueryRespItem{
-				Metric: q.Metric,
-				Tags: tags,
+				Metric:         q.Metric,
+				Tags:           tags,
 				AggregatedTags: []string{},
-				Dps: dps[i],
+				Dps:            dps[i],
 			})
 		}
 	default:
 		results = append(results, client.QueryRespItem{
-			Metric: q.Metric,
+			Metric:         q.Metric,
 			AggregatedTags: []string{},
-			Tags: map[string]string{},
-			Dps: dp,
+			Tags:           map[string]string{},
+			Dps:            dp,
 		})
 	}
 
