@@ -133,10 +133,27 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 				MaxTime: 100,
 				Matchers: []storepb.LabelMatcher{
 					{
+						Type:  storepb.LabelMatcher_EQ,
+						Name:  "__name__",
+						Value: "test.metric2",
+					},
+					{
 						Type:  storepb.LabelMatcher_NRE,
 						Name:  "host",
 						Value: ".*",
 					},
+				},
+				MaxResolutionWindow:     5,
+				Aggregates:              []storepb.Aggr{storepb.Aggr_MIN},
+				PartialResponseDisabled: false,
+			},
+			err: errors.New("NRE (!~) is not supported for general regexps, only fixed alternatives like '(a|b)'"),
+		},
+		{
+			req: storepb.SeriesRequest{
+				MinTime: 0,
+				MaxTime: 100,
+				Matchers: []storepb.LabelMatcher{
 					{
 						Type:  storepb.LabelMatcher_NRE,
 						Name:  "__name__",
@@ -147,7 +164,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 				Aggregates:              []storepb.Aggr{storepb.Aggr_MIN},
 				PartialResponseDisabled: false,
 			},
-			err: errors.New("LabelMatcher_NRE is not supported"),
+			err: errors.New("NRE (!~) is not supported for __name__"),
 		},
 		{
 			req: storepb.SeriesRequest{
@@ -192,6 +209,45 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 								Type:      "not_literal_or",
 								Tagk:      "key",
 								FilterExp: "v",
+								GroupBy:   true,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			req: storepb.SeriesRequest{
+				MinTime: 0,
+				MaxTime: 100,
+				Matchers: []storepb.LabelMatcher{
+					{
+						Type:  storepb.LabelMatcher_NRE,
+						Name:  "host",
+						Value: "(aa|bb)",
+					},
+					{
+						Type:  storepb.LabelMatcher_EQ,
+						Name:  "__name__",
+						Value: "test.metric2",
+					},
+				},
+				MaxResolutionWindow:     5,
+				Aggregates:              []storepb.Aggr{storepb.Aggr_MIN},
+				PartialResponseDisabled: false,
+			},
+			tsdbQ: &opentsdb.QueryParam{
+				Start: 0,
+				End:   100,
+				Queries: []opentsdb.SubQuery{
+					{
+						Aggregator: "none",
+						Metric:     "test.metric2",
+						Fiters: []opentsdb.Filter{
+							{
+								Type:      "not_literal_or",
+								Tagk:      "host",
+								FilterExp: "aa|bb",
 								GroupBy:   true,
 							},
 						},
@@ -401,7 +457,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 		},
 	}
 
-	for _, test := range testCases {
+	for i, test := range testCases {
 		allowedMetrics := regexp.MustCompile(".*")
 		if test.allowedMetrics != nil {
 			allowedMetrics = test.allowedMetrics
@@ -416,7 +472,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 		p, _, err := store.composeOpenTSDBQuery(&test.req)
 		if test.err != nil {
 			if test.err.Error() != err.Error() {
-				t.Error("not expected error")
+				t.Errorf("%d: not expected error, got %v, want %v", i, err, test.err)
 			}
 			continue
 		}
@@ -424,7 +480,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 			t.Error(err)
 		}
 		if len(p.Queries) != len(test.tsdbQ.Queries) {
-			t.Errorf("expected %d queries, got %d", len(test.tsdbQ.Queries), len(p.Queries))
+			t.Errorf("%d: expected %d queries, got %d", i, len(test.tsdbQ.Queries), len(p.Queries))
 		}
 		if len(test.tsdbQ.Queries) == 0 {
 			continue
@@ -432,11 +488,11 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 		// test the requested ranges
 		if test.tsdbQ.Start.(int) != int(p.Start.(int64)) ||
 			test.tsdbQ.End.(int) != int(p.End.(int64)) {
-			t.Errorf("requested range is not equal to sent range (%d - %d) != (%d - %d)",
-				p.Start, p.End, test.tsdbQ.Start, test.tsdbQ.End)
+			t.Errorf("%d: requested range is not equal to sent range (%d - %d) != (%d - %d)",
+				i, p.Start, p.End, test.tsdbQ.Start, test.tsdbQ.End)
 		}
 		if len(p.Queries) != len(test.tsdbQ.Queries) {
-			t.Errorf("number of subqueries does not match")
+			t.Errorf("%d: number of subqueries does not match", i)
 		}
 		for _, referenceQ := range test.tsdbQ.Queries {
 			match := false
@@ -472,7 +528,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 				break
 			}
 			if !match {
-				t.Errorf("there is no matching subquery for %v", referenceQ)
+				t.Errorf("%d: there is no matching subquery for %v", i, referenceQ)
 			}
 		}
 	}
