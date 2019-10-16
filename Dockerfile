@@ -3,7 +3,8 @@ FROM golang:alpine AS build-env
 ADD . /src
 WORKDIR /src
 RUN apk add git
-RUN go get github.com/grpc-ecosystem/grpc-health-probe@v0.3.0
+ARG GRPC_HEALTH_PROBE_VERSION=v0.3.0
+RUN go get github.com/grpc-ecosystem/grpc-health-probe@${GRPC_HEALTH_PROBE_VERSION}
 ENV GO111MODULE=on
 RUN go build -mod=vendor -ldflags '-extldflags "-static"' -o geras ./cmd/geras/main.go
 
