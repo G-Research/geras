@@ -111,8 +111,16 @@ func query(r *http.Request, body []byte) interface{} {
 		return makeError("msResolution required")
 	}
 
-	var results []client.QueryRespItem
+	results := []client.QueryRespItem{}
 	for _, q := range param.Queries {
+		// hack so we pass Geras's healthcheck
+		if len(q.Metric) > 4 && q.Metric[:4] == "tsd." {
+			results = append(results, client.QueryRespItem{
+				Metric: q.Metric,
+			})
+			continue
+		}
+
 		if q.Aggregator != "none" {
 			return makeError("only none aggregator supported")
 		}

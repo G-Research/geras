@@ -137,8 +137,14 @@ func (store *OpenTSDBStore) Info(
 				Aggregator: "sum",
 			}},
 		}
-		_, err := store.openTSDBClient.WithContext(ctx).Query(q)
-		return err
+		results, err := store.openTSDBClient.WithContext(ctx).Query(q)
+		if err != nil {
+			return err
+		}
+		if results.ErrorMsg != nil {
+			return results.ErrorMsg
+		}
+		return nil
 	})
 	return &res, err
 }
