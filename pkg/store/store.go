@@ -60,6 +60,7 @@ type internalMetrics struct {
 	lastUpdateOfOpenTSDBMetrics prometheus.Gauge
 	openTSDBLatency             *prometheus.HistogramVec
 	servedDatapoints            prometheus.Counter
+	servedSeries                prometheus.Counter
 }
 
 func newInternalMetrics(reg prometheus.Registerer) internalMetrics {
@@ -71,6 +72,7 @@ func newInternalMetrics(reg prometheus.Registerer) internalMetrics {
 				}},
 			[]string{"endpoint", "status"}),
 		servedDatapoints: prometheus.NewCounter(prometheus.CounterOpts{Name: "geras_served_datapoints_total"}),
+		servedSeries: prometheus.NewCounter(prometheus.CounterOpts{Name: "geras_served_series_total"}),
 		numberOfOpenTSDBMetrics: prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "geras_cached_metrics"},
 			[]string{"type"}),
 		lastUpdateOfOpenTSDBMetrics: prometheus.NewGauge(prometheus.GaugeOpts{Name: "geras_metrics_cache_update_time"}),
@@ -78,6 +80,7 @@ func newInternalMetrics(reg prometheus.Registerer) internalMetrics {
 	if reg != nil {
 		reg.MustRegister(m.openTSDBLatency)
 		reg.MustRegister(m.servedDatapoints)
+		reg.MustRegister(m.servedSeries)
 		reg.MustRegister(m.numberOfOpenTSDBMetrics)
 		reg.MustRegister(m.lastUpdateOfOpenTSDBMetrics)
 	}
@@ -123,18 +126,18 @@ func (store *OpenTSDBStore) Info(
 		MaxTime: math.MaxInt64,
 		Labels:  store.storeLabels,
 	}
-	var err error
-	store.timedTSDBOp("query", func() error {
+	err := store.timedTSDBOp("query", func() error {
 		now := time.Now().Unix()
 		q := opentsdb.QueryParam{
 			Start: now,
 			End:   now + 1,
+			MsResolution: true,
 			Queries: []opentsdb.SubQuery{{
 				Metric:     store.healthcheckMetric,
 				Aggregator: "sum",
 			}},
 		}
-		_, err = store.openTSDBClient.WithContext(ctx).Query(q)
+		_, err := store.openTSDBClient.WithContext(ctx).Query(q)
 		return err
 	})
 	return &res, err
@@ -175,37 +178,39 @@ func (store *OpenTSDBStore) Series(
 		}
 	}
 
-	var result *opentsdb.QueryResponse
-	store.timedTSDBOp("query", func() error {
-		result, err = store.openTSDBClient.WithContext(ctx).Query(query)
-		return err
+	err = store.timedTSDBOp("query", func() error {
+		outCh := make(chan *opentsdb.QueryRespItem, 5)
+		err := store.openTSDBClient.WithContext(ctx).QueryStream(query, outCh)
+		if err != nil {
+		  return err
+		}
+		for respI := range outCh {
+			if respI.Error != nil {
+				return respI.Error
+			}
+			res, err := convertOpenTSDBResultsToSeriesResponse(respI)
+			if err != nil {
+				return err
+			}
+			if err := server.Send(res); err != nil {
+				return err
+			}
+			store.internalMetrics.servedDatapoints.Add(float64(res.Result.Size()))
+			store.internalMetrics.servedSeries.Add(1)
+		}
+		return nil
 	})
 	if err != nil {
-		level.Error(store.logger).Log("err", err)
 		if tr, ok := trace.FromContext(ctx); ok {
-			tr.LazyPrintf("Series query error: %v", err)
+			tr.LazyPrintf("Query error: %v", err)
 		}
+		level.Error(store.logger).Log("err", err)
 		return err
-	}
-	for _, respI := range result.QueryRespCnts {
-		res, err := convertOpenTSDBResultsToSeriesResponse(respI)
-		if err != nil {
-			level.Error(store.logger).Log("err", err)
-			if tr, ok := trace.FromContext(ctx); ok {
-				tr.LazyPrintf("Series result conversion error: %v", err)
-			}
-			return err
-		}
-		if err := server.Send(res); err != nil {
-			level.Error(store.logger).Log("err", err)
-			return err
-		}
-		store.internalMetrics.servedDatapoints.Add(float64(res.Result.Size()))
 	}
 	return nil
 }
 
-func (store *OpenTSDBStore) timedTSDBOp(endpoint string, f func() error) {
+func (store *OpenTSDBStore) timedTSDBOp(endpoint string, f func() error) error {
 	start := time.Now()
 	err := f()
 	taken := float64(time.Since(start) / time.Second)
@@ -219,6 +224,7 @@ func (store *OpenTSDBStore) timedTSDBOp(endpoint string, f func() error) {
 			"endpoint": endpoint,
 		},
 	).Observe(taken)
+	return err
 }
 
 func (store *OpenTSDBStore) LabelNames(
@@ -235,8 +241,8 @@ func (store *OpenTSDBStore) LabelNames(
 
 func (store *OpenTSDBStore) suggestAsList(ctx context.Context, t string) ([]string, error) {
 	var result *opentsdb.SuggestResponse
-	var err error
-	store.timedTSDBOp("suggest_"+t, func() error {
+	err := store.timedTSDBOp("suggest_"+t, func() error {
+		var err error
 		result, err = store.openTSDBClient.WithContext(ctx).Suggest(
 			opentsdb.SuggestParam{
 				Type:         t,
@@ -419,7 +425,7 @@ func (store *OpenTSDBStore) checkMetricNames(metricNames []string, fullBlock boo
 	return allowed, warnings, nil
 }
 
-func convertOpenTSDBResultsToSeriesResponse(respI opentsdb.QueryRespItem) (*storepb.SeriesResponse, error) {
+func convertOpenTSDBResultsToSeriesResponse(respI *opentsdb.QueryRespItem) (*storepb.SeriesResponse, error) {
 	samples := make([]prompb.Sample, 0)
 	for _, dp := range respI.GetDataPoints() {
 		samples = append(samples, prompb.Sample{Timestamp: dp.Timestamp, Value: dp.Value.(float64)})
