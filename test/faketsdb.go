@@ -218,7 +218,7 @@ func makeError(msg string) map[string]interface{} {
 	log.Printf("error: %s", msg)
 	return map[string]interface{}{
 		"error": map[string]string{
-			"msg": msg,
+			"message": msg,
 		},
 	}
 }
