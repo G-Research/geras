@@ -72,7 +72,7 @@ func newInternalMetrics(reg prometheus.Registerer) internalMetrics {
 				}},
 			[]string{"endpoint", "status"}),
 		servedDatapoints: prometheus.NewCounter(prometheus.CounterOpts{Name: "geras_served_datapoints_total"}),
-		servedSeries: prometheus.NewCounter(prometheus.CounterOpts{Name: "geras_served_series_total"}),
+		servedSeries:     prometheus.NewCounter(prometheus.CounterOpts{Name: "geras_served_series_total"}),
 		numberOfOpenTSDBMetrics: prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "geras_cached_metrics"},
 			[]string{"type"}),
 		lastUpdateOfOpenTSDBMetrics: prometheus.NewGauge(prometheus.GaugeOpts{Name: "geras_metrics_cache_update_time"}),
@@ -129,8 +129,8 @@ func (store *OpenTSDBStore) Info(
 	err := store.timedTSDBOp("query", func() error {
 		now := time.Now().Unix()
 		q := opentsdb.QueryParam{
-			Start: now,
-			End:   now + 1,
+			Start:        now,
+			End:          now + 1,
 			MsResolution: true,
 			Queries: []opentsdb.SubQuery{{
 				Metric:     store.healthcheckMetric,
@@ -182,7 +182,19 @@ func (store *OpenTSDBStore) Series(
 		outCh := make(chan *opentsdb.QueryRespItem, 5)
 		err := store.openTSDBClient.WithContext(ctx).QueryStream(query, outCh)
 		if err != nil {
-		  return err
+			qerr, ok := err.(opentsdb.QueryError)
+			if ok {
+				if code, ok := qerr["code"].(float64); ok && code == 400 {
+					msg, ok := qerr["message"].(string)
+					if !ok || !strings.Contains(msg, "No such name for ") {
+						level.Info(store.logger).Log("msg", "Ignoring 400 error", "err", err)
+					}
+					// Ignore all 400 errors, regardless of the reason (but the logs
+					// should say if it's not a non-existent metric).
+					return nil
+				}
+			}
+			return err
 		}
 		for respI := range outCh {
 			if respI.Error != nil {
