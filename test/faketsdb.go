@@ -136,7 +136,7 @@ func getResults(start, end int, q client.SubQuery) []client.QueryRespItem {
 	var n int
 	_, err := fmt.Sscanf(q.Metric, "test.%c.%d", &a, &n)
 	if err != nil || n >= *flagNumberMetrics {
-		log.Printf("Dropped query for %q, %v", err)
+		log.Printf("Dropped query for %q, %v", q.Metric, err)
 		return nil
 	}
 
