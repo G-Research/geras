@@ -667,7 +667,7 @@ func TestConvertOpenTSDBResultsToSeriesResponse(t *testing.T) {
 			},
 			expectedOutput: storepb.NewSeriesResponse(&storepb.Series{
 				Labels: []storepb.Label{{Name: "__name__", Value: "metric"}},
-				Chunks: []storepb.AggrChunk{{MinTime: 0, MaxTime: 0}},
+				Chunks: []storepb.AggrChunk{},
 			}),
 		},
 		{
@@ -705,7 +705,7 @@ func TestConvertOpenTSDBResultsToSeriesResponse(t *testing.T) {
 		},
 	}
 	for _, test := range testCases {
-		converted, err := convertOpenTSDBResultsToSeriesResponse(&test.input)
+		converted, _, err := convertOpenTSDBResultsToSeriesResponse(&test.input)
 		if err != nil {
 			t.Errorf("unexpected error: %s", err.Error())
 		}

@@ -205,14 +205,14 @@ func (store *OpenTSDBStore) Series(
 			if respI.Error != nil {
 				return respI.Error
 			}
-			res, err := convertOpenTSDBResultsToSeriesResponse(respI)
+			res, count, err := convertOpenTSDBResultsToSeriesResponse(respI)
 			if err != nil {
 				return err
 			}
 			if err := server.Send(res); err != nil {
 				return err
 			}
-			store.internalMetrics.servedDatapoints.Add(float64(res.Result.Size()))
+			store.internalMetrics.servedDatapoints.Add(float64(count))
 			store.internalMetrics.servedSeries.Add(1)
 		}
 		return nil
@@ -439,7 +439,7 @@ func (store *OpenTSDBStore) checkMetricNames(metricNames []string, fullBlock boo
 	return allowed, warnings, nil
 }
 
-func convertOpenTSDBResultsToSeriesResponse(respI *opentsdb.QueryRespItem) (*storepb.SeriesResponse, error) {
+func convertOpenTSDBResultsToSeriesResponse(respI *opentsdb.QueryRespItem) (*storepb.SeriesResponse, int, error) {
 	seriesLabels := make([]storepb.Label, len(respI.Tags))
 	i := 0
 	for k, v := range respI.Tags {
@@ -448,31 +448,34 @@ func convertOpenTSDBResultsToSeriesResponse(respI *opentsdb.QueryRespItem) (*sto
 	}
 	seriesLabels = append(seriesLabels, storepb.Label{Name: "__name__", Value: respI.Metric})
 
-	c := chunkenc.NewXORChunk()
-	a, err := c.Appender()
-	if err != nil {
-		return nil, err
-	}
+	// Turn datapoints into chunks (Prometheus's tsdb encoding)
 	dps := respI.GetDataPoints()
-	for _, dp := range dps {
-		a.Append(int64(dp.Timestamp), dp.Value.(float64))
-	}
-	chunk := &storepb.Chunk{Type: storepb.Chunk_XOR, Data: c.Bytes()}
-
-	var minTime, maxTime int64
-	if len(dps) != 0 {
-		minTime = int64(dps[0].Timestamp)
-		maxTime = int64(dps[len(dps)-1].Timestamp)
-	}
-	res := storepb.NewSeriesResponse(&storepb.Series{
-		Labels: seriesLabels,
-		Chunks: []storepb.AggrChunk{{
+	chunks := []storepb.AggrChunk{}
+	for i := 0; i < len(dps); {
+		c := chunkenc.NewXORChunk()
+		a, err := c.Appender()
+		if err != nil {
+			return nil, 0, err
+		}
+		var minTime int64
+		// Maximum 65535 datapoints in a chunk
+		for ; i < len(dps) && (minTime == 0 || i % 65535 != 0); i++ {
+			dp := dps[i]
+			if minTime == 0 {
+				minTime = int64(dp.Timestamp)
+			}
+			a.Append(int64(dp.Timestamp), dp.Value.(float64))
+		}
+		chunks = append(chunks, storepb.AggrChunk{
 			MinTime: minTime,
-			MaxTime: maxTime,
-			Raw:     chunk,
-		}},
-	})
-	return res, nil
+			MaxTime: int64(dps[i-1].Timestamp),
+			Raw: &storepb.Chunk{Type: storepb.Chunk_XOR, Data: c.Bytes()},
+		})
+	}
+	return storepb.NewSeriesResponse(&storepb.Series{
+		Labels: seriesLabels,
+		Chunks: chunks,
+	}), len(dps), nil
 }
 
 func convertPromQLMatcherToFilter(matcher storepb.LabelMatcher) (opentsdb.Filter, error) {
