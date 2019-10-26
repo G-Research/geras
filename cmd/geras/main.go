@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/G-Research/geras/pkg/store"
-	opentsdb "github.com/G-Research/opentsdb-goclient/client"
 	"github.com/G-Research/opentsdb-goclient/config"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -22,7 +21,10 @@ import (
 	"github.com/thanos-io/thanos/pkg/store/storepb"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc"
+
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	opentsdb "github.com/G-Research/opentsdb-goclient/client"
+	_ "net/http/pprof"
 )
 
 func NewConfiguredLogger(format string, logLevel string) (log.Logger, error) {
