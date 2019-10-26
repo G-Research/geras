@@ -1,7 +1,7 @@
 module github.com/G-Research/geras
 
 require (
-	github.com/G-Research/opentsdb-goclient querystream
+	github.com/G-Research/opentsdb-goclient v0.0.0-20190913102601-c8d547baa56d
 	github.com/OneOfOne/xxhash v1.2.5 // indirect
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20190717042225-c3de453c63f4 // indirect
