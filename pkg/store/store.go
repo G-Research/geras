@@ -13,7 +13,6 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/prometheus/prompb"
 	"github.com/prometheus/prometheus/tsdb/chunkenc"
 	"github.com/thanos-io/thanos/pkg/store/storepb"
 	"golang.org/x/net/trace"
@@ -441,10 +440,6 @@ func (store *OpenTSDBStore) checkMetricNames(metricNames []string, fullBlock boo
 }
 
 func convertOpenTSDBResultsToSeriesResponse(respI *opentsdb.QueryRespItem) (*storepb.SeriesResponse, error) {
-	samples := make([]prompb.Sample, 0)
-	for _, dp := range respI.GetDataPoints() {
-		samples = append(samples, prompb.Sample{Timestamp: dp.Timestamp, Value: dp.Value.(float64)})
-	}
 	seriesLabels := make([]storepb.Label, len(respI.Tags))
 	i := 0
 	for k, v := range respI.Tags {
@@ -452,21 +447,29 @@ func convertOpenTSDBResultsToSeriesResponse(respI *opentsdb.QueryRespItem) (*sto
 		i++
 	}
 	seriesLabels = append(seriesLabels, storepb.Label{Name: "__name__", Value: respI.Metric})
-	enc, cb, err := encodeChunk(samples)
+
+	c := chunkenc.NewXORChunk()
+	a, err := c.Appender()
 	if err != nil {
 		return nil, err
 	}
+	dps := respI.GetDataPoints()
+	for _, dp := range dps {
+		a.Append(int64(dp.Timestamp), dp.Value.(float64))
+	}
+	chunk := &storepb.Chunk{Type: storepb.Chunk_XOR, Data: c.Bytes()}
+
 	var minTime, maxTime int64
-	if len(samples) != 0 {
-		minTime = samples[0].Timestamp
-		maxTime = samples[len(samples)-1].Timestamp
+	if len(dps) != 0 {
+		minTime = int64(dps[0].Timestamp)
+		maxTime = int64(dps[len(dps)-1].Timestamp)
 	}
 	res := storepb.NewSeriesResponse(&storepb.Series{
 		Labels: seriesLabels,
 		Chunks: []storepb.AggrChunk{{
 			MinTime: minTime,
 			MaxTime: maxTime,
-			Raw:     &storepb.Chunk{Type: enc, Data: cb},
+			Raw:     chunk,
 		}},
 	})
 	return res, nil
@@ -520,16 +523,4 @@ func convertPromQLMatcherToFilter(matcher storepb.LabelMatcher) (opentsdb.Filter
 		}
 	}
 	return f, nil
-}
-
-func encodeChunk(ss []prompb.Sample) (storepb.Chunk_Encoding, []byte, error) {
-	c := chunkenc.NewXORChunk()
-	a, err := c.Appender()
-	if err != nil {
-		return 0, nil, err
-	}
-	for _, s := range ss {
-		a.Append(int64(s.Timestamp), float64(s.Value))
-	}
-	return storepb.Chunk_XOR, c.Bytes(), nil
 }
