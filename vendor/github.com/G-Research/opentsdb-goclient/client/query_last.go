@@ -134,10 +134,11 @@ func (c *clientImpl) QueryLast(param QueryLastParam) (*QueryLastResponse, error)
 		return nil, errors.New("The given query param is invalid.\n")
 	}
 	queryEndpoint := fmt.Sprintf("%s%s", c.tsdbEndpoint, QueryLastPath)
-	reqBodyCnt, err := getQueryBodyContents(&param)
+	resultByte, err := json.Marshal(param)
 	if err != nil {
-		return nil, err
+		return nil, errors.New(fmt.Sprintf("Failed to marshal query param: %v\n", err))
 	}
+	reqBodyCnt := string(resultByte)
 	queryResp := QueryLastResponse{}
 	if err = c.sendRequest(PostMethod, queryEndpoint, reqBodyCnt, &queryResp); err != nil {
 		return nil, err

@@ -1,4 +1,4 @@
-# github.com/G-Research/opentsdb-goclient v0.0.0-20190913102601-c8d547baa56d
+# github.com/G-Research/opentsdb-goclient v0.0.0-20191026082808-38a8952042a6
 github.com/G-Research/opentsdb-goclient/client
 github.com/G-Research/opentsdb-goclient/config
 # github.com/beorn7/perks v1.0.1
@@ -82,8 +82,8 @@ google.golang.org/genproto/googleapis/api/httpbody
 google.golang.org/genproto/protobuf/field_mask
 # google.golang.org/grpc v1.22.1
 google.golang.org/grpc
-google.golang.org/grpc/codes
 google.golang.org/grpc/health/grpc_health_v1
+google.golang.org/grpc/codes
 google.golang.org/grpc/status
 google.golang.org/grpc/balancer
 google.golang.org/grpc/balancer/roundrobin
