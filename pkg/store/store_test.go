@@ -585,7 +585,7 @@ func TestConvertOpenTSDBResultsToSeriesResponse(t *testing.T) {
 		},
 	}
 	for _, test := range testCases {
-		converted, err := convertOpenTSDBResultsToSeriesResponse(test.input)
+		converted, err := convertOpenTSDBResultsToSeriesResponse(&test.input)
 		if err != nil {
 			t.Errorf("unexpected error: %s", err.Error())
 		}

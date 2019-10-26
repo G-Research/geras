@@ -28,6 +28,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -128,6 +129,11 @@ type Client interface {
 	// status code and response info. Otherwise, an error instance will be returned, when the given parameter
 	// is invalid, it failed to parese the response, or OpenTSDB is un-connectable right now.
 	Query(param QueryParam) (*QueryResponse, error)
+
+	// QueryStream is the streaming implementation of 'GET /api/query'.
+	// It will return results over the channel, as they are parsed, resulting in
+	// more predictable memory usage.
+	QueryStream(param QueryParam, outCh chan<- *QueryRespItem) error
 
 	// QueryLast is the implementation of 'GET /api/query/last' endpoint.
 	// It is introduced firstly in v2.1, and fully supported in v2.2. So it should be aware that this api works
@@ -456,14 +462,12 @@ type clientImpl struct {
 }
 
 // Response defines the common behaviours all the specific response for
-// different rest-apis shound obey.
+// different rest-apis shound obey. For lower level access ResponseStream is
+// available which makes the body directly available.
 // Currently it is an abstraction used in (*clientImpl).sendRequest()
 // to stored the different kinds of response contents for all the rest-apis.
 type Response interface {
-
-	// SetStatus can be used to set the actual http status code of
-	// the related http response for the specific Response instance
-	SetStatus(code int)
+	ResponseBase
 
 	// GetCustomParser can be used to retrive a custom-defined parser.
 	// Returning nil means current specific Response instance doesn't
@@ -474,6 +478,21 @@ type Response interface {
 	// Return the contents of the specific Response instance with
 	// the string format
 	String() string
+}
+
+type ResponseBase interface {
+	// SetStatus can be used to set the actual http status code of
+	// the related http response for the specific Response instance
+	SetStatus(code int)
+}
+
+// ResponseStream represents a streaming response.
+type ResponseStream interface {
+	ResponseBase
+
+	// HandleBody is given the response.Body. It must call Close on the ReadCloser
+	// when finished (which can be after the method returns).
+	HandleBody(io.ReadCloser) error
 }
 
 func (c *clientImpl) WithContext(ctx context.Context) Client {
@@ -489,11 +508,11 @@ func (c *clientImpl) WithContext(ctx context.Context) Client {
 // reqBodyCnt is "" means there is no contents in the request body.
 // If the tsdb server responses properly, the error is nil and parsedResp is the parsed
 // response with the specific type. Otherwise, the returned error is not nil.
-func (c *clientImpl) sendRequest(method, url, reqBodyCnt string, parsedResp Response) error {
+func (c *clientImpl) sendRequest(method, url, reqBodyCnt string, parsedResp ResponseBase) error {
 	req, err := http.NewRequest(method, url, strings.NewReader(reqBodyCnt))
-        if c.ctx != nil {
-          req = req.WithContext(c.ctx)
-        }
+	if c.ctx != nil {
+		req = req.WithContext(c.ctx)
+	}
 	if err != nil {
 		return errors.New(fmt.Sprintf("Failed to create request for %s %s: %v", method, url, err))
 	}
@@ -502,16 +521,30 @@ func (c *clientImpl) sendRequest(method, url, reqBodyCnt string, parsedResp Resp
 	if err != nil {
 		return errors.New(fmt.Sprintf("Failed to send request for %s %s: %v", method, url, err))
 	}
-	defer resp.Body.Close()
+
+	parsedResp.SetStatus(resp.StatusCode)
+
+	switch r := parsedResp.(type) {
+	case ResponseStream:
+		return r.HandleBody(resp.Body)
+	case Response:
+		return HandleResponseBody(r, method, url, resp.Body)
+	default:
+		return fmt.Errorf("Unhandled type: %T", r)
+	}
+}
+
+func HandleResponseBody(r Response, method, url string, body io.ReadCloser) error {
+	defer body.Close()
+	var err error
 	var jsonBytes []byte
-	if jsonBytes, err = ioutil.ReadAll(resp.Body); err != nil {
+	if jsonBytes, err = ioutil.ReadAll(body); err != nil {
 		return errors.New(fmt.Sprintf("Failed to read response for %s %s: %v", method, url, err))
 	}
 
-	parsedResp.SetStatus(resp.StatusCode)
-	parser := parsedResp.GetCustomParser()
+	parser := r.GetCustomParser()
 	if parser == nil {
-		if err = json.Unmarshal(jsonBytes, parsedResp); err != nil {
+		if err = json.Unmarshal(jsonBytes, r); err != nil {
 			return errors.New(fmt.Sprintf("Failed to parse response for %s %s: %v", method, url, err))
 		}
 	} else {

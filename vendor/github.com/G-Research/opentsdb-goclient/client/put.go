@@ -58,6 +58,13 @@ func (data *DataPoint) String() string {
 	return string(content)
 }
 
+// DataPointByTimestamp implements sort.Interface for sorting by timestamp.
+type DataPointByTimestamp []*DataPoint
+
+func (dp DataPointByTimestamp) Len() int           { return len(dp) }
+func (dp DataPointByTimestamp) Swap(i, j int)      { dp[i], dp[j] = dp[j], dp[i] }
+func (dp DataPointByTimestamp) Less(i, j int) bool { return dp[i].Timestamp < dp[j].Timestamp }
+
 // PutError holds the error message for each putting DataPoint instance.
 // Only calling PUT() with "details" query parameter, the reponse of
 // the failed put data operation can contain an array PutError instance

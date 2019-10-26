@@ -121,6 +121,11 @@ func query(r *http.Request, body []byte) interface{} {
 		}
 
 		r := getResults(int(param.Start.(float64)), int(param.End.(float64)), q)
+		if r == nil {
+			err := makeError(fmt.Sprintf("No such name for 'metrics': '%s'", q.Metric))
+			err["error"].(map[string]interface{})["code"] = 400
+			return err
+		}
 		results = append(results, r...)
 	}
 	return results
@@ -131,7 +136,7 @@ func getResults(start, end int, q client.SubQuery) []client.QueryRespItem {
 	var n int
 	_, err := fmt.Sscanf(q.Metric, "test.%c.%d", &a, &n)
 	if err != nil || n >= *flagNumberMetrics {
-		log.Printf("Dropped query for %q, %v", err)
+		log.Printf("Dropped query for %q, %v", q.Metric, err)
 		return nil
 	}
 
@@ -217,8 +222,8 @@ func queryLast(r *http.Request, body []byte) interface{} {
 func makeError(msg string) map[string]interface{} {
 	log.Printf("error: %s", msg)
 	return map[string]interface{}{
-		"error": map[string]string{
-			"msg": msg,
+		"error": map[string]interface{}{
+			"message": msg,
 		},
 	}
 }

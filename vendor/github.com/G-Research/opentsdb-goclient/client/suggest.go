@@ -88,7 +88,6 @@ func (c *clientImpl) Suggest(sugParam SuggestParam) (*SuggestResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(reqBodyCnt)
 	sugResp := SuggestResponse{}
 	if err := c.sendRequest(PostMethod, sugEndpoint, reqBodyCnt, &sugResp); err != nil {
 		return nil, err
