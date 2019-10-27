@@ -1,5 +1,7 @@
 # IDE
 .idea/
+.*.sw[op]
 
 # outputs
+geras
 geras.exe
