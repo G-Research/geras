@@ -31,7 +31,7 @@ jobs:
           docker_layer_caching: true
       - run:
           name: Docker build
-          command: docker build -t g-research/geras:$CIRCLE_BRANCH .
+          command: docker build -t g-research/geras:$CIRCLE_BRANCH --build-arg GIT_REVISION="$CIRCLE_SHA1" --build-arg GIT_BRANCH="$CIRCLE_BRANCH" .
 
       - save_cache: 
           key: pkg-cache
