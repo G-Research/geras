@@ -1,6 +1,7 @@
 package store
 
 import (
+	"encoding/json"
 	"errors"
 	"os"
 	"regexp"
@@ -654,6 +655,18 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 	}
 }
 
+func newDps(in map[string]interface{}) (out opentsdb.DataPoints) {
+	enc, err := json.Marshal(in)
+	if err != nil {
+		panic(err)
+	}
+	err = json.Unmarshal(enc, &out)
+	if err != nil {
+		panic(err)
+	}
+	return
+}
+
 func TestConvertOpenTSDBResultsToSeriesResponse(t *testing.T) {
 	testCases := []struct {
 		input          opentsdb.QueryRespItem
@@ -663,7 +676,7 @@ func TestConvertOpenTSDBResultsToSeriesResponse(t *testing.T) {
 			input: opentsdb.QueryRespItem{
 				Metric: "metric",
 				Tags:   map[string]string{},
-				Dps:    map[string]interface{}{},
+				Dps:    newDps(map[string]interface{}{}),
 			},
 			expectedOutput: storepb.NewSeriesResponse(&storepb.Series{
 				Labels: []storepb.Label{{Name: "__name__", Value: "metric"}},
@@ -674,11 +687,11 @@ func TestConvertOpenTSDBResultsToSeriesResponse(t *testing.T) {
 			input: opentsdb.QueryRespItem{
 				Metric: "metric",
 				Tags:   map[string]string{"a": "b"},
-				Dps: map[string]interface{}{
+				Dps: newDps(map[string]interface{}{
 					"1": 1.0,
 					"2": 1.5,
 					"3": 2.0,
-				},
+				}),
 			},
 			expectedOutput: storepb.NewSeriesResponse(&storepb.Series{
 				Labels: []storepb.Label{{Name: "__name__", Value: "metric"}, {Name: "a", Value: "b"}},
@@ -689,11 +702,11 @@ func TestConvertOpenTSDBResultsToSeriesResponse(t *testing.T) {
 			input: opentsdb.QueryRespItem{
 				Metric: "metric2",
 				Tags:   map[string]string{"a": "b", "host": "test"},
-				Dps: map[string]interface{}{
+				Dps: newDps(map[string]interface{}{
 					"10": 1.0,
 					"12": 1.5,
 					"13": 2.0,
-				},
+				}),
 			},
 			expectedOutput: storepb.NewSeriesResponse(&storepb.Series{
 				Labels: []storepb.Label{
