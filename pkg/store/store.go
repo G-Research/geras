@@ -339,14 +339,11 @@ func (store *OpenTSDBStore) getMatchingMetricNames(matcher storepb.LabelMatcher)
 	} else if matcher.Type == storepb.LabelMatcher_NRE {
 		return nil, errors.New("NRE (!~) is not supported for __name__")
 	} else if matcher.Type == storepb.LabelMatcher_RE {
-		// TODO: Regexp matchers working on the actual name seems like the least
-		// surprising behaviour. Actually document this.
-		rx, err := regexp.Compile(matcher.Value)
+		rx, err := regexp.Compile("^(?:" + matcher.Value + ")$")
 		if err != nil {
 			return nil, err
 		}
 		var matchingMetrics []string
-		// TODO: parallelize this
 		store.metricsNamesLock.RLock()
 		for _, v := range store.metricNames {
 			if rx.MatchString(v) {
@@ -482,8 +479,16 @@ func convertPromQLMatcherToFilter(matcher storepb.LabelMatcher) (opentsdb.Filter
 	}
 	switch matcher.Type {
 	case storepb.LabelMatcher_EQ:
-		f.Type = "literal_or"
-		f.FilterExp = matcher.Value
+		if !strings.Contains(matcher.Value, "|") {
+			f.Type = "literal_or"
+			f.FilterExp = matcher.Value
+		} else {
+			// "|" is meaningful in OpenTSDB matches and there's no way to escape.
+			// It's unlikely to be used in queries, but to avoid odd behaviour we turn
+			// this into a regexp.
+			f.Type = "regexp"
+			f.FilterExp = "^(?:" + regexp.QuoteMeta(matcher.Value) + ")$"
+		}
 	case storepb.LabelMatcher_NEQ:
 		f.Type = "not_literal_or"
 		f.FilterExp = matcher.Value
@@ -499,8 +504,20 @@ func convertPromQLMatcherToFilter(matcher storepb.LabelMatcher) (opentsdb.Filter
 		f.Type = "not_literal_or"
 		f.FilterExp = strings.Join(items, "|")
 	case storepb.LabelMatcher_RE:
-		f.Type = "regexp"
-		f.FilterExp = matcher.Value
+		rx, err := regexputil.Parse(matcher.Value)
+		if err != nil {
+			return opentsdb.Filter{}, err
+		}
+		if items, ok := rx.List(); ok {
+			f.Type = "literal_or"
+			f.FilterExp = strings.Join(items, "|")
+		} else if matcher.Value == ".*" {
+			f.Type = "wildcard"
+			f.FilterExp = "*"
+		} else {
+			f.Type = "regexp"
+			f.FilterExp = "^(?:" + matcher.Value + ")$"
+		}
 	}
 	return f, nil
 }
