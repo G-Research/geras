@@ -36,6 +36,7 @@ jobs:
       - run:
           name: Docker run without flags
           command: |
+            set +e
             docker run -t g-research/geras:$CIRCLE_BRANCH
             exit=$?
             # No flags; so expect help output. Also puts the version output into the CircleCI log
