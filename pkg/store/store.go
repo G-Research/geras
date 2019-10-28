@@ -460,6 +460,7 @@ func convertOpenTSDBResultsToSeriesResponse(respI *opentsdb.QueryRespItem) (*sto
 		var minTime int64
 		// Maximum 120 datapoints in a chunk -- this is a Thanos recommendation, see
 		// https://app.slack.com/client/T08PSQ7BQ/CL25937SP/thread/CL25937SP-1572162942.034700
+		// (on https://slack.cncf.io).
 		for ; i < len(dps) && (minTime == 0 || i % 120 != 0); i++ {
 			dp := dps[i]
 			if minTime == 0 {
