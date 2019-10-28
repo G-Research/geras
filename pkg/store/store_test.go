@@ -660,10 +660,6 @@ func newDps(in map[string]interface{}) (out opentsdb.DataPoints) {
 	if err != nil {
 		panic(err)
 	}
-	if string(enc) == "{}" {
-		// XXX: Can this actually happen?
-		return
-	}
 	err = json.Unmarshal(enc, &out)
 	if err != nil {
 		panic(err)
