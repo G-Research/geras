@@ -458,8 +458,8 @@ func convertOpenTSDBResultsToSeriesResponse(respI *opentsdb.QueryRespItem) (*sto
 			return nil, 0, err
 		}
 		var minTime int64
-		// Maximum 65535 datapoints in a chunk
-		for ; i < len(dps) && (minTime == 0 || i % 65535 != 0); i++ {
+		// Maximum 120 datapoints in a chunk
+		for ; i < len(dps) && (minTime == 0 || i % 120 != 0); i++ {
 			dp := dps[i]
 			if minTime == 0 {
 				minTime = int64(dp.Timestamp)
