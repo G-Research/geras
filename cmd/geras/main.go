@@ -16,6 +16,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/pkg/errors"
+	"github.com/prometheus/common/version"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/thanos-io/thanos/pkg/store/storepb"
@@ -112,6 +113,8 @@ func main() {
 	flag.Parse()
 
 	if *openTSDBAddress == "" {
+		fmt.Println(version.Print("geras"))
+		fmt.Println("Options:")
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
@@ -172,6 +175,7 @@ func main() {
 	}
 
 	http.Handle("/metrics", promhttp.Handler())
+	prometheus.DefaultRegisterer.MustRegister(version.NewCollector("geras"))
 
 	// create openTSDBStore and expose its api on a grpc server
 	srv := store.NewOpenTSDBStore(logger, client, prometheus.DefaultRegisterer, *refreshInterval, storeLabels, allowedMetricNames, blockedMetricNames, *enableMetricSuggestions, *healthcheckMetric)

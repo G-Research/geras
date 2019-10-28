@@ -31,7 +31,20 @@ jobs:
           docker_layer_caching: true
       - run:
           name: Docker build
-          command: docker build -t g-research/geras:$CIRCLE_BRANCH .
+          command: docker build -t g-research/geras:$CIRCLE_BRANCH --build-arg GIT_REVISION="$CIRCLE_SHA1" --build-arg GIT_BRANCH="$CIRCLE_BRANCH" --build-arg BUILD_USER="circleci" .
+
+      - run:
+          name: Docker run without flags
+          command: |
+            set +e
+            docker run -t g-research/geras:$CIRCLE_BRANCH
+            exit=$?
+            # No flags; so expect help output. Also puts the version output into the CircleCI log
+            if [[ $exit != 1 ]]; then
+              echo "Unexpected exit code: $exit"
+              exit 1
+            fi
+            exit 0
 
       - save_cache: 
           key: pkg-cache
