@@ -13,7 +13,6 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/prometheus/prompb"
 	"github.com/prometheus/prometheus/tsdb/chunkenc"
 	"github.com/thanos-io/thanos/pkg/store/storepb"
 	"golang.org/x/net/trace"
@@ -206,14 +205,14 @@ func (store *OpenTSDBStore) Series(
 			if respI.Error != nil {
 				return respI.Error
 			}
-			res, err := convertOpenTSDBResultsToSeriesResponse(respI)
+			res, count, err := convertOpenTSDBResultsToSeriesResponse(respI)
 			if err != nil {
 				return err
 			}
 			if err := server.Send(res); err != nil {
 				return err
 			}
-			store.internalMetrics.servedDatapoints.Add(float64(res.Result.Size()))
+			store.internalMetrics.servedDatapoints.Add(float64(count))
 			store.internalMetrics.servedSeries.Add(1)
 		}
 		return nil
@@ -440,11 +439,7 @@ func (store *OpenTSDBStore) checkMetricNames(metricNames []string, fullBlock boo
 	return allowed, warnings, nil
 }
 
-func convertOpenTSDBResultsToSeriesResponse(respI *opentsdb.QueryRespItem) (*storepb.SeriesResponse, error) {
-	samples := make([]prompb.Sample, 0)
-	for _, dp := range respI.GetDataPoints() {
-		samples = append(samples, prompb.Sample{Timestamp: dp.Timestamp, Value: dp.Value.(float64)})
-	}
+func convertOpenTSDBResultsToSeriesResponse(respI *opentsdb.QueryRespItem) (*storepb.SeriesResponse, int, error) {
 	seriesLabels := make([]storepb.Label, len(respI.Tags))
 	i := 0
 	for k, v := range respI.Tags {
@@ -452,24 +447,37 @@ func convertOpenTSDBResultsToSeriesResponse(respI *opentsdb.QueryRespItem) (*sto
 		i++
 	}
 	seriesLabels = append(seriesLabels, storepb.Label{Name: "__name__", Value: respI.Metric})
-	enc, cb, err := encodeChunk(samples)
-	if err != nil {
-		return nil, err
-	}
-	var minTime, maxTime int64
-	if len(samples) != 0 {
-		minTime = samples[0].Timestamp
-		maxTime = samples[len(samples)-1].Timestamp
-	}
-	res := storepb.NewSeriesResponse(&storepb.Series{
-		Labels: seriesLabels,
-		Chunks: []storepb.AggrChunk{{
+
+	// Turn datapoints into chunks (Prometheus's tsdb encoding)
+	dps := respI.GetDataPoints()
+	chunks := []storepb.AggrChunk{}
+	for i := 0; i < len(dps); {
+		c := chunkenc.NewXORChunk()
+		a, err := c.Appender()
+		if err != nil {
+			return nil, 0, err
+		}
+		var minTime int64
+		// Maximum 120 datapoints in a chunk -- this is a Thanos recommendation, see
+		// https://app.slack.com/client/T08PSQ7BQ/CL25937SP/thread/CL25937SP-1572162942.034700
+		// (on https://slack.cncf.io).
+		for ; i < len(dps) && (minTime == 0 || i % 120 != 0); i++ {
+			dp := dps[i]
+			if minTime == 0 {
+				minTime = int64(dp.Timestamp)
+			}
+			a.Append(int64(dp.Timestamp), dp.Value.(float64))
+		}
+		chunks = append(chunks, storepb.AggrChunk{
 			MinTime: minTime,
-			MaxTime: maxTime,
-			Raw:     &storepb.Chunk{Type: enc, Data: cb},
-		}},
-	})
-	return res, nil
+			MaxTime: int64(dps[i-1].Timestamp),
+			Raw: &storepb.Chunk{Type: storepb.Chunk_XOR, Data: c.Bytes()},
+		})
+	}
+	return storepb.NewSeriesResponse(&storepb.Series{
+		Labels: seriesLabels,
+		Chunks: chunks,
+	}), len(dps), nil
 }
 
 func convertPromQLMatcherToFilter(matcher storepb.LabelMatcher) (opentsdb.Filter, error) {
@@ -520,16 +528,4 @@ func convertPromQLMatcherToFilter(matcher storepb.LabelMatcher) (opentsdb.Filter
 		}
 	}
 	return f, nil
-}
-
-func encodeChunk(ss []prompb.Sample) (storepb.Chunk_Encoding, []byte, error) {
-	c := chunkenc.NewXORChunk()
-	a, err := c.Appender()
-	if err != nil {
-		return 0, nil, err
-	}
-	for _, s := range ss {
-		a.Append(int64(s.Timestamp), float64(s.Value))
-	}
-	return storepb.Chunk_XOR, c.Bytes(), nil
 }
