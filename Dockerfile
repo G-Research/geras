@@ -10,6 +10,7 @@ RUN go get github.com/grpc-ecosystem/grpc-health-probe@${GRPC_HEALTH_PROBE_VERSI
 # docker build --build-arg GIT_REVISION="$(git rev-parse HEAD)" \
 #   --build-arg GIT_BRANCH="$(git rev-parse --abbrev-ref HEAD)" .
 ARG GERAS_VERSION="development"
+ARG BUILD_USER="docker"
 ARG GIT_REVISION="unknown"
 ARG GIT_BRANCH="unknown"
 
@@ -18,6 +19,7 @@ RUN go install -mod=vendor -ldflags '-extldflags "-static" \
   -X github.com/prometheus/common/version.Version='"${GERAS_VERSION}"' \
   -X github.com/prometheus/common/version.Revision='"${GIT_REVISION}"' \
   -X github.com/prometheus/common/version.Branch='"${GIT_BRANCH}"' \
+  -X github.com/prometheus/common/version.BuildUser='"${BUILD_USER}"' \
   -X github.com/prometheus/common/version.BuildDate='"$(date +%Y%m%d-%H:%M:%S)" \
   ./cmd/geras
 
