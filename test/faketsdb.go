@@ -44,6 +44,13 @@ var (
 	flagListen        = flag.String("listen", ":4242", "Where HTTP service should listen")
 )
 
+type QueryRespItem struct {
+	Metric         string                 `json:"metric"`
+	Tags           map[string]string      `json:"tags"`
+	AggregatedTags []string               `json:"aggregateTags"`
+	Dps            map[string]interface{} `json:"dps"`
+}
+
 func main() {
 	flag.Parse()
 
@@ -111,12 +118,13 @@ func query(r *http.Request, body []byte) interface{} {
 		return makeError("msResolution required")
 	}
 
-	results := []client.QueryRespItem{}
+	results := []QueryRespItem{}
 	for _, q := range param.Queries {
 		// hack so we pass Geras's healthcheck
 		if len(q.Metric) > 4 && q.Metric[:4] == "tsd." {
-			results = append(results, client.QueryRespItem{
+			results = append(results, QueryRespItem{
 				Metric: q.Metric,
+				Dps:    map[string]interface{}{"1572271051000": 1.0},
 			})
 			continue
 		}
@@ -139,7 +147,7 @@ func query(r *http.Request, body []byte) interface{} {
 	return results
 }
 
-func getResults(start, end int, q client.SubQuery) []client.QueryRespItem {
+func getResults(start, end int, q client.SubQuery) []QueryRespItem {
 	var a rune
 	var n int
 	_, err := fmt.Sscanf(q.Metric, "test.%c.%d", &a, &n)
@@ -159,12 +167,12 @@ func getResults(start, end int, q client.SubQuery) []client.QueryRespItem {
 		dp[fmt.Sprintf("%d", i)] = i - OUR_EPOCH
 	}
 
-	var results []client.QueryRespItem
+	var results []QueryRespItem
 
 	switch a {
 	case 'a':
 		// Extra tag
-		results = append(results, client.QueryRespItem{
+		results = append(results, QueryRespItem{
 			Metric: q.Metric,
 			Tags: map[string]string{
 				"x": "a",
@@ -178,7 +186,7 @@ func getResults(start, end int, q client.SubQuery) []client.QueryRespItem {
 			{"x": "a", "y": "y"},
 			{"x": "a", "y": "z"},
 		} {
-			results = append(results, client.QueryRespItem{
+			results = append(results, QueryRespItem{
 				Metric:         q.Metric,
 				Tags:           tags,
 				AggregatedTags: []string{},
@@ -195,7 +203,7 @@ func getResults(start, end int, q client.SubQuery) []client.QueryRespItem {
 			{"x": "a", "y": "y"},
 			{"x": "a", "y": "z"},
 		} {
-			results = append(results, client.QueryRespItem{
+			results = append(results, QueryRespItem{
 				Metric:         q.Metric,
 				Tags:           tags,
 				AggregatedTags: []string{},
@@ -203,7 +211,7 @@ func getResults(start, end int, q client.SubQuery) []client.QueryRespItem {
 			})
 		}
 	default:
-		results = append(results, client.QueryRespItem{
+		results = append(results, QueryRespItem{
 			Metric:         q.Metric,
 			AggregatedTags: []string{},
 			Tags:           map[string]string{},
