@@ -43,6 +43,10 @@ jobs:
             fi
             exit 0
 
+      - run:
+          name: Docker compose and test basic query
+          command: cd test && ./test-query
+
       - save_cache: 
           key: pkg-cache
           paths:
