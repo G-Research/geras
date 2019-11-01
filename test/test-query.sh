@@ -1,9 +1,13 @@
 #!/bin/bash
-apt-get install -y jq
+sudo apt-get install -y jq
 
 echo "CIRCLE_BRANCH=$CIRCLE_BRANCH" > .env
 
 docker-compose up -d --force-recreate
+if [[ $? != 0 ]]; then
+  docker-compose logs
+  exit 1
+fi
 
 i=10
 while [[ $i -gt 0 ]]; do
