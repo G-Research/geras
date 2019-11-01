@@ -1,6 +1,8 @@
 #!/bin/bash
 apt-get install -y jq
 
+echo "CIRCLE_BRANCH=$CIRCLE_BRANCH" > .env
+
 docker-compose up -d --force-recreate
 
 i=10
