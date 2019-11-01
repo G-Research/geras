@@ -113,8 +113,8 @@ func main() {
 	flag.Parse()
 
 	if *openTSDBAddress == "" {
-		fmt.Println(version.Print("geras"))
-		fmt.Println("Options:")
+		fmt.Fprintln(os.Stderr, version.Print("geras"))
+		fmt.Fprintln(os.Stderr, "Options:")
 		flag.PrintDefaults()
 		os.Exit(1)
 	}

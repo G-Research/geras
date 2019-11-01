@@ -1,21 +1,21 @@
 # build stage
-FROM golang:alpine AS build-env
+FROM golang:1-alpine AS build-env
 ADD . /src
 WORKDIR /src
 RUN apk add git
 ARG GRPC_HEALTH_PROBE_VERSION=v0.3.0
 RUN go get github.com/grpc-ecosystem/grpc-health-probe@${GRPC_HEALTH_PROBE_VERSION}
 
-# Normally built on CircleCI, you can get a dev image with version info with:
-# docker build --build-arg GIT_REVISION="$(git rev-parse HEAD)" \
-#   --build-arg GIT_BRANCH="$(git rev-parse --abbrev-ref HEAD)" .
 ARG GERAS_VERSION="development"
 ARG BUILD_USER="docker"
 ARG GIT_REVISION="unknown"
 ARG GIT_BRANCH="unknown"
 
-ENV GO111MODULE=on
-RUN go install -mod=vendor -ldflags '-extldflags "-static" \
+RUN if [[ "${GIT_REVISION}" = "unknown" ]]; then \
+  GIT_REVISION="$(git rev-parse HEAD)"; \
+  GIT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"; \
+fi; \
+go install -ldflags ' \
   -X github.com/prometheus/common/version.Version='"${GERAS_VERSION}"' \
   -X github.com/prometheus/common/version.Revision='"${GIT_REVISION}"' \
   -X github.com/prometheus/common/version.Branch='"${GIT_BRANCH}"' \
