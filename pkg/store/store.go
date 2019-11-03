@@ -19,8 +19,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	opentsdb "github.com/G-Research/opentsdb-goclient/client"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+
+	opentsdb "github.com/G-Research/opentsdb-goclient/client"
 
 	"github.com/G-Research/geras/pkg/regexputil"
 )
@@ -461,7 +462,7 @@ func convertOpenTSDBResultsToSeriesResponse(respI *opentsdb.QueryRespItem) (*sto
 		// Maximum 120 datapoints in a chunk -- this is a Thanos recommendation, see
 		// https://app.slack.com/client/T08PSQ7BQ/CL25937SP/thread/CL25937SP-1572162942.034700
 		// (on https://slack.cncf.io).
-		for ; i < len(dps) && (minTime == 0 || i % 120 != 0); i++ {
+		for ; i < len(dps) && (minTime == 0 || i%120 != 0); i++ {
 			dp := dps[i]
 			if minTime == 0 {
 				minTime = int64(dp.Timestamp)
@@ -471,7 +472,7 @@ func convertOpenTSDBResultsToSeriesResponse(respI *opentsdb.QueryRespItem) (*sto
 		chunks = append(chunks, storepb.AggrChunk{
 			MinTime: minTime,
 			MaxTime: int64(dps[i-1].Timestamp),
-			Raw: &storepb.Chunk{Type: storepb.Chunk_XOR, Data: c.Bytes()},
+			Raw:     &storepb.Chunk{Type: storepb.Chunk_XOR, Data: c.Bytes()},
 		})
 	}
 	return storepb.NewSeriesResponse(&storepb.Series{
