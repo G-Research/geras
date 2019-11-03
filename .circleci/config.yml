@@ -32,7 +32,9 @@ jobs:
       - run:
           name: Docker build
           command: |
+            set +e
             tag="$(git describe --tags --exact 2>/dev/null)"
+            set -e
             extra=
             if [[ "$tag" != "" ]]; then
               extra="--build-arg GERAS_VERSION=$tag"
