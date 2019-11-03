@@ -76,7 +76,7 @@ jobs:
       - image: circleci/golang:1.12.5
     environment:
       SOURCE_IMAGE: docker.pkg.github.com/g-research/geras/autobuild
-      IMAGE_NAME: docker.pkg.github.com/g-research/geras/release
+      IMAGE_NAME: docker.pkg.github.com/g-research/geras/geras
     steps:
       - setup_remote_docker
       - run:
@@ -99,9 +99,6 @@ workflows:
   build-deploy:
     jobs:
       - build
-      - docker_push:
-          requires:
-            - build
       - docker_release:
           requires:
             - build
