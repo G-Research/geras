@@ -54,7 +54,7 @@ jobs:
       - run:
           name: Push autobuild Docker image
           command: |
-            if [[ $CIRCLE_TAG == "" ]] || [[ $CIRCLE_BRANCH != "docker-tag-release" ]]; then
+            if [[ $CIRCLE_TAG == "" ]] && [[ $CIRCLE_BRANCH != "docker-tag-release" ]]; then
               echo "Not on a tag or master, skipped."
               exit 0
             fi
