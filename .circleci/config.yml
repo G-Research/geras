@@ -32,9 +32,9 @@ jobs:
       - run:
           name: Docker build
           command: |
-            extra=
-            if [[ "$CIRCLE_TAG" != "" ]]; then
-              extra="--build-arg GERAS_VERSION=$CIRCLE_TAG"
+            tag="$(git describe --tags --exact 2>/dev/null)"
+            if [[ "$tag" != "" ]]; then
+              extra="--build-arg GERAS_VERSION=$tag"
             fi
             docker build -t g-research/geras:$CIRCLE_BRANCH --build-arg GIT_REVISION="$CIRCLE_SHA1" --build-arg GIT_BRANCH="$CIRCLE_BRANCH" --build-arg BUILD_USER="circleci" $extra .
 
@@ -54,17 +54,16 @@ jobs:
       - run:
           name: Push autobuild Docker image
           command: |
-            if [[ $CIRCLE_TAG == "" ]] && [[ $CIRCLE_BRANCH != "docker-tag-release" ]]; then
+            echo "$GITHUB_DOCKER_TOKEN" | docker login docker.pkg.github.com -u "$GITHUB_DOCKER_USER" --password-stdin
+            set -x
+            tag="$(git describe --tags --exact 2>/dev/null)"
+            if [[ $tag == "" ]] && [[ $CIRCLE_BRANCH != "docker-tag-release" ]]; then
               echo "Not on a tag or master, skipped."
               exit 0
             fi
-            tag="$CIRCLE_TAG"
-            echo "Tag is $tag"
             if [[ $tag == "" ]]; then
               tag="$CIRCLE_BRANCH"
             fi
-            echo "Now tag is $tag"
-            echo "$GITHUB_DOCKER_TOKEN" | docker login docker.pkg.github.com -u "$GITHUB_DOCKER_USER" --password-stdin
             docker tag $SOURCE_IMAGE:$CIRCLE_BRANCH $IMAGE_NAME:$tag
             docker push $IMAGE_NAME:$tag
 
@@ -87,15 +86,19 @@ jobs:
           command: |
             echo "$GITHUB_DOCKER_TOKEN" | docker login docker.pkg.github.com -u "$GITHUB_DOCKER_USER" --password-stdin
             set -x
-            docker pull $SOURCE_IMAGE:$CIRCLE_TAG
-            docker pull $IMAGE_NAME:$CIRCLE_TAG
-            existing=$(docker images -q $IMAGE_NAME:$CIRCLE_TAG)
+            tag="$(git describe --tags --exact 2>/dev/null)"
+            if [[ $tag == "" ]]; then
+              exit 1
+            fi
+            docker pull $SOURCE_IMAGE:$tag
+            docker pull $IMAGE_NAME:$tag
+            existing=$(docker images -q $IMAGE_NAME:$tag)
             if [[ $existing != "" ]]; then
               echo "Tag already exists, not overwriting"
               exit 1
             fi
-            docker tag $SOURCE_IMAGE:$CIRCLE_TAG $IMAGE_NAME:$CIRCLE_TAG
-            docker push $IMAGE_NAME:$CIRCLE_TAG
+            docker tag $SOURCE_IMAGE:$tag $IMAGE_NAME:$tag
+            docker push $IMAGE_NAME:$tag
 
 workflows:
   version: 2
