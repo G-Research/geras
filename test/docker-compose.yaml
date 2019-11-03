@@ -1,16 +1,11 @@
 faketsdb:
-  image: golang:1-alpine
+  build: faketsdb
   ports:
     - 4242:4242
-  volumes:
-    - ./:/src
-  environment:
-    - GO111MODULE=on
-  command: ["go", "run", "/src/faketsdb.go"]
 
 geras:
-  build: ..
-  #image: g-research/geras:$CIRCLE_BRANCH
+  #build: ..
+  image: g-research/geras:$CIRCLE_BRANCH
   ports:
     - 19000:19000
     - 19001:19001
