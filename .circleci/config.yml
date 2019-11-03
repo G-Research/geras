@@ -103,7 +103,7 @@ jobs:
               exit 1
             fi
             docker pull $SOURCE_IMAGE:$tag
-            docker pull $IMAGE_NAME:$tag
+            docker pull $IMAGE_NAME:$tag || exit 0
             existing=$(docker images -q $IMAGE_NAME:$tag)
             if [[ $existing != "" ]]; then
               echo "Tag already exists, not overwriting"
