@@ -33,6 +33,7 @@ jobs:
           name: Docker build
           command: |
             tag="$(git describe --tags --exact 2>/dev/null)"
+            extra=
             if [[ "$tag" != "" ]]; then
               extra="--build-arg GERAS_VERSION=$tag"
             fi
@@ -105,10 +106,15 @@ workflows:
 
   build-deploy:
     jobs:
-      - build
+      - build:
+          filters:
+            tags:
+              only: /v.*/
       - docker_release:
           requires:
             - build
           filters:
+            branches:
+              ignore: /.*/
             tags:
               only: /v.*/
