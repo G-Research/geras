@@ -4,6 +4,7 @@ faketsdb:
     - 4242:4242
 
 geras:
+  # Uncomment this and comment out image to test locally
   #build: ..
   image: g-research/geras:$CIRCLE_BRANCH
   ports:
@@ -25,4 +26,6 @@ thanos:
     - 10902:10902
   links:
     - geras
-  command: ["query", "--store=geras:19000"]
+  command:
+    - "query"
+    - "--store=geras:19000"
