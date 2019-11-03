@@ -32,18 +32,26 @@ jobs:
       - run:
           name: Docker build
           command: |
-            tag="$(git describe --tags --exact 2>/dev/null || exit 0)"
+            set -x
             extra=
-            if [[ "$tag" != "" ]]; then
-              extra="--build-arg GERAS_VERSION=$tag"
+            if [[ "$CIRCLE_TAG" != "" ]]; then
+              extra="--build-arg GERAS_VERSION=$CIRCLE_TAG"
+              branch=$CIRCLE_TAG
+            else
+              branch=$CIRCLE_BRANCH
             fi
-            docker build -t g-research/geras:$CIRCLE_BRANCH --build-arg GIT_REVISION="$CIRCLE_SHA1" --build-arg GIT_BRANCH="$CIRCLE_BRANCH" --build-arg BUILD_USER="circleci" $extra .
+            docker build -t g-research/geras:$branch --build-arg GIT_REVISION="$CIRCLE_SHA1" --build-arg GIT_BRANCH="$branch" --build-arg BUILD_USER="circleci" $extra .
 
       - run:
           name: Docker run without flags
           command: |
+            if [[ -n $CIRCLE_TAG ]]; then
+              branch=$CIRCLE_TAG
+            else
+              branch=$CIRCLE_BRANCH
+            fi
             set +e
-            docker run -t g-research/geras:$CIRCLE_BRANCH
+            docker run -t g-research/geras:$branch
             exit=$?
             # No flags; so expect help output. Also puts the version output into the CircleCI log
             if [[ $exit != 1 ]]; then
@@ -57,17 +65,18 @@ jobs:
           command: |
             echo "$GITHUB_DOCKER_TOKEN" | docker login docker.pkg.github.com -u "$GITHUB_DOCKER_USER" --password-stdin
             set -x
-            tag="$(git describe --tags --exact 2>/dev/null || exit 0)"
+            if [[ $CIRCLE_TAG != "" ]]; then
+              branch=$CIRCLE_TAG
+            else
+              branch=$CIRCLE_BRANCH
+            fi
             # XXX: change branch to master
-            if [[ $tag == "" ]] && [[ $CIRCLE_BRANCH != "docker-tag-release" ]]; then
+            if [[ $CIRCLE_TAG == "" ]] && [[ $CIRCLE_BRANCH != "docker-tag-release" ]]; then
               echo "Not on a tag or master, skipped."
               exit 0
             fi
-            if [[ $tag == "" ]]; then
-              tag="$CIRCLE_BRANCH"
-            fi
-            docker tag $SOURCE_IMAGE:$CIRCLE_BRANCH $IMAGE_NAME:$tag
-            docker push $IMAGE_NAME:$tag
+            docker tag $SOURCE_IMAGE:$branch $IMAGE_NAME:$branch
+            docker push $IMAGE_NAME:$branch
 
       - save_cache: 
           key: pkg-cache
@@ -88,8 +97,7 @@ jobs:
           command: |
             echo "$GITHUB_DOCKER_TOKEN" | docker login docker.pkg.github.com -u "$GITHUB_DOCKER_USER" --password-stdin
             set -x
-            tag="$(git describe --tags --exact 2>/dev/null || exit 0)"
-            echo "CIRCLE_TAG=$CIRCLE_TAG"
+            tag=$CIRCLE_TAG
             if [[ $tag == "" ]]; then
               echo "No tag found"
               exit 1
