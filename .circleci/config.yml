@@ -90,7 +90,7 @@ jobs:
               echo "Tag already exists, not overwriting"
               exit 1
             fi
-            docker tag $SOURCE_IMAGE:$CIRCLE_BRANCH $IMAGE_NAME:$CIRCLE_TAG
+            docker tag $SOURCE_IMAGE:$CIRCLE_TAG $IMAGE_NAME:$CIRCLE_TAG
             docker push $IMAGE_NAME:$CIRCLE_TAG
 
 workflows:
