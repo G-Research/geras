@@ -70,8 +70,7 @@ jobs:
             else
               branch=$CIRCLE_BRANCH
             fi
-            # XXX: change branch to master
-            if [[ $CIRCLE_TAG == "" ]] && [[ $CIRCLE_BRANCH != "docker-tag-release" ]]; then
+            if [[ $CIRCLE_TAG == "" ]] && [[ $CIRCLE_BRANCH != "master" ]]; then
               echo "Not on a tag or master, skipped."
               exit 0
             fi
@@ -118,12 +117,14 @@ workflows:
   build-deploy:
     jobs:
       - build:
+          # Runs on all branches and tags matching /v.*/
           filters:
             tags:
               only: /v.*/
       - docker_release:
           requires:
             - build
+          # Only run on tags matching /v.*/
           filters:
             branches:
               ignore: /.*/
