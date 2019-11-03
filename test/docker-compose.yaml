@@ -3,10 +3,10 @@ faketsdb:
   ports:
     - 4242:4242
   volumes:
-    - ./faketsdb.go:/faketsdb.go
+    - ./:/src
   environment:
     - GO111MODULE=on
-  command: ["go", "run", "/faketsdb.go"]
+  command: ["go", "run", "/src/faketsdb.go"]
 
 geras:
   build: ..
