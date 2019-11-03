@@ -78,6 +78,7 @@ jobs:
       SOURCE_IMAGE: docker.pkg.github.com/g-research/geras/autobuild
       IMAGE_NAME: docker.pkg.github.com/g-research/geras/geras
     steps:
+      - checkout
       - setup_remote_docker
       - run:
           name: Release tagged commit as release Docker image
