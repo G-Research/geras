@@ -20,6 +20,7 @@ geras:
 
 thanos:
   image: thanosio/thanos:v0.8.1
+  container_name: thanos
   ports:
     - 10902:10902
   links:
