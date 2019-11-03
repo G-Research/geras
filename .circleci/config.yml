@@ -59,7 +59,7 @@ jobs:
       - run:
           name: Publish Docker image
           command: |
-            echo "$GITHUB_DOCKER_TOKEN" | docker login -u "$GITHUB_DOCKER_USER" --password-stdin
+            echo "$GITHUB_DOCKER_TOKEN" | docker login docker.pkg.github.com -u "$GITHUB_DOCKER_USER" --password-stdin
             docker tag $SOURCE_IMAGE:$CIRCLE_BRANCH $IMAGE_NAME:$CIRCLE_BRANCH
             docker push $IMAGE_NAME:$CIRCLE_BRANCH
 
@@ -74,10 +74,10 @@ jobs:
       - run:
           name: Release Docker image
           command: |
-            echo "$GITHUB_DOCKER_TOKEN" | docker login -u "$GITHUB_DOCKER_USER" --password-stdin
+            echo "$GITHUB_DOCKER_TOKEN" | docker login docker.pkg.github.com -u "$GITHUB_DOCKER_USER" --password-stdin
             docker pull $IMAGE_NAME:$CIRCLE_TAG
             existing=$(docker images -q $IMAGE_NAME:$CIRCLE_TAG)
-            if [[ $existing == "" ]]; then
+            if [[ $existing != "" ]]; then
               echo "Tag already exists, not overwriting"
               exit 1
             fi
