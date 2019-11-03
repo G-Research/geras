@@ -53,7 +53,7 @@ jobs:
       - image: circleci/golang:1.12.5
     environment:
       SOURCE_IMAGE: g-research/geras
-      IMAGE_NAME: docker.pkg.github.com/G-Research/geras/autobuild
+      IMAGE_NAME: docker.pkg.github.com/g-research/geras/autobuild
     steps:
       - setup_remote_docker
       - run:
@@ -67,8 +67,8 @@ jobs:
     docker:
       - image: circleci/golang:1.12.5
     environment:
-      SOURCE_IMAGE: docker.pkg.github.com/G-Research/geras/autobuild
-      IMAGE_NAME: docker.pkg.github.com/G-Research/geras/release
+      SOURCE_IMAGE: docker.pkg.github.com/g-research/geras/autobuild
+      IMAGE_NAME: docker.pkg.github.com/g-research/geras/release
     steps:
       - setup_remote_docker
       - run:
