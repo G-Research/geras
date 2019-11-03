@@ -9,7 +9,7 @@ jobs:
           keys:
             - lint-cache
       - run:
-          name: Check gofmt and goimports
+          name: Check goimports
           command: |
             files=$(go run golang.org/x/tools/cmd/goimports -l -local "github.com/G-Research" .)
             if [[ $files != "" ]]; then
