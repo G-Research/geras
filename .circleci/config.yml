@@ -7,8 +7,13 @@ jobs:
       - checkout
       - run:
           name: Check gofmt and goimports
-          command:
-           exit $(go run golang.org/x/tools/cmd/goimports -l -local "github.com/G-Research" . | wc -l)
+          command: |
+            files=$(go run golang.org/x/tools/cmd/goimports -l -local "github.com/G-Research" .)
+            if [[ $files != "" ]]; then
+              echo "Files need goimports running on them:"
+              echo "$files"
+              exit 1
+            fi
 
   build:
     docker:
