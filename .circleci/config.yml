@@ -32,9 +32,7 @@ jobs:
       - run:
           name: Docker build
           command: |
-            set +e
-            tag="$(git describe --tags --exact 2>/dev/null)"
-            set -e
+            tag="$(git describe --tags --exact 2>/dev/null || exit 0)"
             extra=
             if [[ "$tag" != "" ]]; then
               extra="--build-arg GERAS_VERSION=$tag"
@@ -59,7 +57,8 @@ jobs:
           command: |
             echo "$GITHUB_DOCKER_TOKEN" | docker login docker.pkg.github.com -u "$GITHUB_DOCKER_USER" --password-stdin
             set -x
-            tag="$(git describe --tags --exact 2>/dev/null)"
+            tag="$(git describe --tags --exact 2>/dev/null || exit 0)"
+            # XXX: change branch to master
             if [[ $tag == "" ]] && [[ $CIRCLE_BRANCH != "docker-tag-release" ]]; then
               echo "Not on a tag or master, skipped."
               exit 0
@@ -89,8 +88,10 @@ jobs:
           command: |
             echo "$GITHUB_DOCKER_TOKEN" | docker login docker.pkg.github.com -u "$GITHUB_DOCKER_USER" --password-stdin
             set -x
-            tag="$(git describe --tags --exact 2>/dev/null)"
+            tag="$(git describe --tags --exact 2>/dev/null || exit 0)"
+            echo "CIRCLE_TAG=$CIRCLE_TAG"
             if [[ $tag == "" ]]; then
+              echo "No tag found"
               exit 1
             fi
             docker pull $SOURCE_IMAGE:$tag
