@@ -8,7 +8,7 @@ jobs:
       - run:
           name: Check gofmt and goimports
           command:
-           exit $(go run golang.org/x/tools/cmd/goimports -l -local "github.com/G-Research/geras" | wc -l)
+           exit $(go run golang.org/x/tools/cmd/goimports -l -local "github.com/G-Research" | wc -l)
 
   build:
     docker:
@@ -57,3 +57,10 @@ jobs:
           key: pkg-cache
           paths:
             - "/go/pkg"
+
+workflows:
+  version: 2
+  build-deploy:
+    jobs:
+      - lint
+      - build
