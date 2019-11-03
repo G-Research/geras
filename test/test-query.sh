@@ -9,16 +9,11 @@ if [[ $? != 0 ]]; then
   exit 1
 fi
 
-i=10
-while [[ $i -gt 0 ]]; do
-  if curl http://localhost:10902/-/healthy | grep -q healthy; then
-    break
-  fi
-  i=$[$i - 1]
-  sleep 10
-done
-
 set -e
 
+docker run --network container:thanos \
+  appropriate/curl --retry 10 --retry-delay 5 --retry-connrefused http://localhost:10902/-/healthy
+
 # We just check we get some JSON back for now...
-curl "http://localhost:10902/api/v1/query?query=test%3Aa%3A5&dedup=true&partial_response=true&time=1572629812.291&_=1572629811861" | jq .
+docker run --network container:thanos \
+  appropriate/curl --retry 2 --retry-delay 5 "http://localhost:10902/api/v1/query?query=test%3Aa%3A5&dedup=true&partial_response=true&time=1572629812.291&_=1572629811861" | jq .
