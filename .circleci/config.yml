@@ -5,6 +5,9 @@ jobs:
       - image: circleci/golang
     steps:
       - checkout
+      - restore_cache:
+          keys:
+            - lint-cache
       - run:
           name: Check gofmt and goimports
           command: |
@@ -14,6 +17,10 @@ jobs:
               echo "$files"
               exit 1
             fi
+      - save_cache:
+          key: lint-cache
+          paths:
+            - "/go/pkg"
 
   build:
     docker:
