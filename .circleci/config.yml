@@ -47,3 +47,60 @@ jobs:
           key: pkg-cache
           paths:
             - "/go/pkg"
+
+  docker_push:
+    docker:
+      - image: circleci/golang:1.12.5
+    environment:
+      SOURCE_NAME: g-research/geras
+      IMAGE_NAME: docker.pkg.github.com/G-Research/geras/autobuild
+    steps:
+      - setup_remote_docker
+      - run:
+          name: Publish Docker image
+          command: |
+            echo "$GITHUB_DOCKER_TOKEN" | docker login -u "$GITHUB_DOCKER_USER" --password-stdin
+            docker tag $SOURCE_IMAGE:$CIRCLE_BRANCH $IMAGE_NAME:$CIRCLE_BRANCH
+            docker push $IMAGE_NAME:$CIRCLE_BRANCH
+
+  docker_release:
+    docker:
+      - image: circleci/golang:1.12.5
+    environment:
+      SOURCE_NAME: docker.pkg.github.com/G-Research/geras/autobuild
+      IMAGE_NAME: docker.pkg.github.com/G-Research/geras/release
+    steps:
+      - setup_remote_docker
+      - run:
+          name: Release Docker image
+          command: |
+            echo "$GITHUB_DOCKER_TOKEN" | docker login -u "$GITHUB_DOCKER_USER" --password-stdin
+            docker pull $IMAGE_NAME:$CIRCLE_TAG
+            existing=$(docker images -q $IMAGE_NAME:$CIRCLE_TAG)
+            if [[ $existing == "" ]]; then
+              echo "Tag already exists, not overwriting"
+              exit 1
+            fi
+            docker tag $SOURCE_IMAGE:$CIRCLE_BRANCH $IMAGE_NAME:$CIRCLE_TAG
+            docker push $IMAGE_NAME:$CIRCLE_TAG
+
+workflows:
+  version: 2
+
+  build-deploy:
+    jobs:
+      - build
+      - docker_push:
+          requires:
+            - build
+          filters:
+            branches:
+              only: /master|docker-tag-release/
+            tags:
+              only: /v.*/
+      - docker_release:
+          requires:
+            - docker_push
+          filters:
+            tags:
+              only: /v.*/
