@@ -1,5 +1,15 @@
 version: 2
 jobs:
+  lint:
+    docker:
+      - image: circleci/golang
+    steps:
+      - checkout
+      - run:
+          name: Check gofmt and goimports
+          command:
+           exit $(go run golang.org/x/tools/cmd/goimports -l -local "github.com/G-Research/geras" | wc -l)
+
   build:
     docker:
       - image: circleci/golang:1.12.5
