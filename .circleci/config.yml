@@ -59,9 +59,11 @@ jobs:
               exit 0
             fi
             tag="$CIRCLE_TAG"
+            echo "Tag is $tag"
             if [[ $tag == "" ]]; then
               tag="$CIRCLE_BRANCH"
             fi
+            echo "Now tag is $tag"
             echo "$GITHUB_DOCKER_TOKEN" | docker login docker.pkg.github.com -u "$GITHUB_DOCKER_USER" --password-stdin
             docker tag $SOURCE_IMAGE:$CIRCLE_BRANCH $IMAGE_NAME:$tag
             docker push $IMAGE_NAME:$tag
