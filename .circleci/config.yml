@@ -8,7 +8,7 @@ jobs:
       - run:
           name: Check gofmt and goimports
           command:
-           exit $(go run golang.org/x/tools/cmd/goimports -l -local "github.com/G-Research" | wc -l)
+           exit $(go run golang.org/x/tools/cmd/goimports -l -local "github.com/G-Research" . | wc -l)
 
   build:
     docker:
