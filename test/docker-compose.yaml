@@ -3,14 +3,14 @@ faketsdb:
   ports:
     - 4242:4242
   volumes:
-    - ./:/app
+    - ./faketsdb.go:/faketsdb.go
   environment:
     - GO111MODULE=on
-  command: ["go", "run", "/app/faketsdb.go"]
+  command: ["go", "run", "/faketsdb.go"]
 
 geras:
-  #build: ..
-  image: g-research/geras:$CIRCLE_BRANCH
+  build: ..
+  #image: g-research/geras:$CIRCLE_BRANCH
   ports:
     - 19000:19000
     - 19001:19001
