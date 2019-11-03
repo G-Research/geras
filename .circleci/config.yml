@@ -83,6 +83,7 @@ jobs:
           name: Release tagged commit as release Docker image
           command: |
             echo "$GITHUB_DOCKER_TOKEN" | docker login docker.pkg.github.com -u "$GITHUB_DOCKER_USER" --password-stdin
+            set -x
             docker pull $SOURCE_IMAGE:$CIRCLE_TAG
             docker pull $IMAGE_NAME:$CIRCLE_TAG
             existing=$(docker images -q $IMAGE_NAME:$CIRCLE_TAG)
