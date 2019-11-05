@@ -160,6 +160,9 @@ func (store *OpenTSDBStore) Series(
 	req *storepb.SeriesRequest,
 	server storepb.Store_SeriesServer) error {
 	ctx := server.Context()
+	if tr, ok := trace.FromContext(ctx); ok {
+		tr.LazyPrintf("PromQL: %v", dumpPromQL(req))
+	}
 	query, warnings, err := store.composeOpenTSDBQuery(req)
 	if err != nil {
 		level.Error(store.logger).Log("err", err)
@@ -198,6 +201,8 @@ func (store *OpenTSDBStore) Series(
 			}
 			return err
 		}
+		overallCount := 0
+		seriesCount := 0
 		for respI := range outCh {
 			if respI.Error != nil {
 				return respI.Error
@@ -210,7 +215,12 @@ func (store *OpenTSDBStore) Series(
 				return err
 			}
 			store.internalMetrics.servedDatapoints.Add(float64(count))
+			overallCount += count
 			store.internalMetrics.servedSeries.Add(1)
+			seriesCount++
+		}
+		if tr, ok := trace.FromContext(ctx); ok {
+			tr.LazyPrintf("sent: datapoints:%d series:%d", overallCount, seriesCount)
 		}
 		return nil
 	})
@@ -455,7 +465,7 @@ func convertOpenTSDBResultsToSeriesResponse(respI *opentsdb.QueryRespItem) (*sto
 		// Maximum 120 datapoints in a chunk -- this is a Thanos recommendation, see
 		// https://app.slack.com/client/T08PSQ7BQ/CL25937SP/thread/CL25937SP-1572162942.034700
 		// (on https://slack.cncf.io).
-		for ; i < len(dps) && (minTime == 0 || i % 120 != 0); i++ {
+		for ; i < len(dps) && (minTime == 0 || i%120 != 0); i++ {
 			dp := dps[i]
 			if minTime == 0 {
 				minTime = int64(dp.Timestamp)
@@ -465,7 +475,7 @@ func convertOpenTSDBResultsToSeriesResponse(respI *opentsdb.QueryRespItem) (*sto
 		chunks = append(chunks, storepb.AggrChunk{
 			MinTime: minTime,
 			MaxTime: int64(dps[i-1].Timestamp),
-			Raw: &storepb.Chunk{Type: storepb.Chunk_XOR, Data: c.Bytes()},
+			Raw:     &storepb.Chunk{Type: storepb.Chunk_XOR, Data: c.Bytes()},
 		})
 	}
 	return storepb.NewSeriesResponse(&storepb.Series{
@@ -522,4 +532,24 @@ func convertPromQLMatcherToFilter(matcher storepb.LabelMatcher) (opentsdb.Filter
 		}
 	}
 	return f, nil
+}
+
+func dumpPromQL(req *storepb.SeriesRequest) string {
+	b := strings.Builder{}
+	for i, m := range req.Matchers {
+		if i != 0 {
+			b.WriteRune(',')
+		}
+		t := "="
+		switch m.Type {
+		case storepb.LabelMatcher_NEQ:
+			t = "!="
+		case storepb.LabelMatcher_RE:
+			t = "=~"
+		case storepb.LabelMatcher_NRE:
+			t = "!~"
+		}
+		fmt.Fprintf(&b, "%s%s%q", m.Name, t, m.Value)
+	}
+	return fmt.Sprintf("{%v}", &b)
 }
