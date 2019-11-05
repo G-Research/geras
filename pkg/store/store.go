@@ -163,9 +163,6 @@ func (store *OpenTSDBStore) Series(
 	query, warnings, err := store.composeOpenTSDBQuery(req)
 	if err != nil {
 		level.Error(store.logger).Log("err", err)
-		if tr, ok := trace.FromContext(ctx); ok {
-			tr.LazyPrintf("Series query compose error: %v", err)
-		}
 		return err
 	}
 	if len(query.Queries) == 0 {
@@ -218,9 +215,6 @@ func (store *OpenTSDBStore) Series(
 		return nil
 	})
 	if err != nil {
-		if tr, ok := trace.FromContext(ctx); ok {
-			tr.LazyPrintf("Query error: %v", err)
-		}
 		level.Error(store.logger).Log("err", err)
 		return err
 	}
