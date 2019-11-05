@@ -380,13 +380,6 @@ func (store *OpenTSDBStore) composeOpenTSDBQuery(req *storepb.SeriesRequest) (op
 		}
 		tagFilters = append(tagFilters, f)
 	}
-	if len(metricNames) == 0 {
-		// although promQL supports queries without metric names
-		// we do not want to do it at the moment.
-		err := errors.New("missing __name__")
-		level.Info(store.logger).Log("err", err)
-		return opentsdb.QueryParam{}, nil, err
-	}
 	var warnings []error
 	metricNames, warnings, err = store.checkMetricNames(metricNames, true)
 	if err != nil {
@@ -394,6 +387,10 @@ func (store *OpenTSDBStore) composeOpenTSDBQuery(req *storepb.SeriesRequest) (op
 		return opentsdb.QueryParam{}, nil, err
 	}
 	if len(metricNames) == 0 {
+		// although promQL supports queries without metric names we do not want to
+		// do it at the moment, but don't send an error because it's fine to do
+		// queries that join metrics on Thanos and Geras. e.g.:
+		// {__name__="some.opentsdb.metric",label="x"} or absent({label="x"} * 0
 		return opentsdb.QueryParam{}, nil, nil
 	}
 
