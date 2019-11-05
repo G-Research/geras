@@ -161,6 +161,9 @@ func (store *OpenTSDBStore) Series(
 	req *storepb.SeriesRequest,
 	server storepb.Store_SeriesServer) error {
 	ctx := server.Context()
+	if tr, ok := trace.FromContext(ctx); ok {
+		tr.LazyPrintf("PromQL: %v", dumpPromQL(req))
+	}
 	query, warnings, err := store.composeOpenTSDBQuery(req)
 	if err != nil {
 		level.Error(store.logger).Log("err", err)
@@ -199,6 +202,8 @@ func (store *OpenTSDBStore) Series(
 			}
 			return err
 		}
+		overallCount := 0
+		seriesCount := 0
 		for respI := range outCh {
 			if respI.Error != nil {
 				return respI.Error
@@ -211,7 +216,12 @@ func (store *OpenTSDBStore) Series(
 				return err
 			}
 			store.internalMetrics.servedDatapoints.Add(float64(count))
+			overallCount += count
 			store.internalMetrics.servedSeries.Add(1)
+			seriesCount++
+		}
+		if tr, ok := trace.FromContext(ctx); ok {
+			tr.LazyPrintf("sent: datapoints:%d series:%d", overallCount, seriesCount)
 		}
 		return nil
 	})
@@ -523,4 +533,24 @@ func convertPromQLMatcherToFilter(matcher storepb.LabelMatcher) (opentsdb.Filter
 		}
 	}
 	return f, nil
+}
+
+func dumpPromQL(req *storepb.SeriesRequest) string {
+	b := strings.Builder{}
+	for i, m := range req.Matchers {
+		if i != 0 {
+			b.WriteRune(',')
+		}
+		t := "="
+		switch m.Type {
+		case storepb.LabelMatcher_NEQ:
+			t = "!="
+		case storepb.LabelMatcher_RE:
+			t = "=~"
+		case storepb.LabelMatcher_NRE:
+			t = "!~"
+		}
+		fmt.Fprintf(&b, "%s%s%q", m.Name, t, m.Value)
+	}
+	return fmt.Sprintf("{%v}", &b)
 }
