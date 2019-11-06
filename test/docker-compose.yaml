@@ -1,0 +1,31 @@
+faketsdb:
+  build: faketsdb
+  ports:
+    - 4242:4242
+
+geras:
+  # Uncomment this and comment out image to test locally
+  #build: ..
+  image: g-research/geras:$CIRCLE_BRANCH
+  ports:
+    - 19000:19000
+    - 19001:19001
+  links:
+    - faketsdb
+  command:
+    - "-log.level=debug"
+    - "-opentsdb-address=faketsdb:4242"
+    - "-trace-dumpbody"
+    - "-grpc-listen=:19000"
+    - "-http-listen=:19001"
+
+thanos:
+  image: thanosio/thanos:v0.8.1
+  container_name: thanos
+  ports:
+    - 10902:10902
+  links:
+    - geras
+  command:
+    - "query"
+    - "--store=geras:19000"
