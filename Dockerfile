@@ -25,6 +25,13 @@ go install -ldflags ' \
 
 # final stage
 FROM alpine
+LABEL org.opencontainers.image.description="Geras: Thanos Store API for OpenTSDB"
+LABEL org.opencontainers.image.source="https://github.com/G-Research/geras"
+LABEL org.opencontainers.image.vendor="G-Research"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
+LABEL org.opencontainers.image.version=${GERAS_VERSION}
+LABEL org.opencontainers.image.revision=${GIT_REVISION}
+
 WORKDIR /bin
 COPY --from=build-env /go/bin/geras .
 COPY --from=build-env /go/bin/grpc-health-probe .
