@@ -11,21 +11,24 @@ import (
 	"strings"
 	"time"
 
-	"github.com/G-Research/geras/pkg/store"
-	"github.com/G-Research/opentsdb-goclient/config"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/pkg/errors"
-	"github.com/prometheus/common/version"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/common/version"
 	"github.com/thanos-io/thanos/pkg/store/storepb"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc"
 
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
-	opentsdb "github.com/G-Research/opentsdb-goclient/client"
+	"github.com/G-Research/geras/pkg/store"
+	"github.com/G-Research/opentsdb-goclient/config"
+
 	_ "net/http/pprof"
+
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+
+	opentsdb "github.com/G-Research/opentsdb-goclient/client"
 )
 
 func NewConfiguredLogger(format string, logLevel string) (log.Logger, error) {

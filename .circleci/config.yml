@@ -1,5 +1,27 @@
 version: 2
 jobs:
+  lint:
+    docker:
+      - image: circleci/golang
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - lint-cache
+      - run:
+          name: Check goimports
+          command: |
+            files=$(go run golang.org/x/tools/cmd/goimports -l -local "github.com/G-Research" .)
+            if [[ $files != "" ]]; then
+              echo "Files need goimports running on them:"
+              echo "$files"
+              exit 1
+            fi
+      - save_cache:
+          key: lint-cache
+          paths:
+            - "/go/pkg"
+
   build:
     docker:
       - image: circleci/golang:1.12.5
@@ -47,3 +69,10 @@ jobs:
           key: pkg-cache
           paths:
             - "/go/pkg"
+
+workflows:
+  version: 2
+  build-deploy:
+    jobs:
+      - lint
+      - build
