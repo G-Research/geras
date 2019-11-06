@@ -29,6 +29,8 @@ jobs:
     environment:
       GO111MODULE: 'on'
       GOBIN: "/go/bin"
+      SOURCE_IMAGE: g-research/geras
+      IMAGE_NAME: docker.pkg.github.com/g-research/geras/autobuild
     steps:
       - checkout
       - restore_cache:
@@ -48,15 +50,30 @@ jobs:
       # See https://circleci.com/docs/2.0/building-docker-images/
       - setup_remote_docker:
           docker_layer_caching: true
+
       - run:
           name: Docker build
-          command: docker build -t g-research/geras:$CIRCLE_BRANCH --build-arg GIT_REVISION="$CIRCLE_SHA1" --build-arg GIT_BRANCH="$CIRCLE_BRANCH" --build-arg BUILD_USER="circleci" .
+          command: |
+            set -x
+            extra=
+            if [[ "$CIRCLE_TAG" != "" ]]; then
+              extra="--build-arg GERAS_VERSION=$CIRCLE_TAG"
+              branch=$CIRCLE_TAG
+            else
+              branch=$CIRCLE_BRANCH
+            fi
+            docker build -t g-research/geras:$branch --build-arg GIT_REVISION="$CIRCLE_SHA1" --build-arg GIT_BRANCH="$branch" --build-arg BUILD_USER="circleci" $extra .
 
       - run:
           name: Docker run without flags
           command: |
+            if [[ -n $CIRCLE_TAG ]]; then
+              branch=$CIRCLE_TAG
+            else
+              branch=$CIRCLE_BRANCH
+            fi
             set +e
-            docker run -t g-research/geras:$CIRCLE_BRANCH
+            docker run -t g-research/geras:$branch
             exit=$?
             # No flags; so expect help output. Also puts the version output into the CircleCI log
             if [[ $exit != 1 ]]; then
@@ -65,14 +82,74 @@ jobs:
             fi
             exit 0
 
+      - run:
+          name: Push autobuild Docker image
+          command: |
+            echo "$GITHUB_DOCKER_TOKEN" | docker login docker.pkg.github.com -u "$GITHUB_DOCKER_USER" --password-stdin
+            set -x
+            if [[ $CIRCLE_TAG != "" ]]; then
+              branch=$CIRCLE_TAG
+            else
+              branch=$CIRCLE_BRANCH
+            fi
+            if [[ $CIRCLE_TAG == "" ]] && [[ $CIRCLE_BRANCH != "master" ]]; then
+              echo "Not on a tag or master, skipped."
+              exit 0
+            fi
+            docker tag $SOURCE_IMAGE:$branch $IMAGE_NAME:$branch
+            docker push $IMAGE_NAME:$branch
+
       - save_cache: 
           key: pkg-cache
           paths:
             - "/go/pkg"
 
+  docker_release:
+    docker:
+      - image: circleci/golang:1.12.5
+    environment:
+      SOURCE_IMAGE: docker.pkg.github.com/g-research/geras/autobuild
+      IMAGE_NAME: docker.pkg.github.com/g-research/geras/geras
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Release tagged commit as release Docker image
+          command: |
+            echo "$GITHUB_DOCKER_TOKEN" | docker login docker.pkg.github.com -u "$GITHUB_DOCKER_USER" --password-stdin
+            set -x
+            tag=$CIRCLE_TAG
+            if [[ $tag == "" ]]; then
+              echo "No tag found"
+              exit 1
+            fi
+            docker pull $SOURCE_IMAGE:$tag
+            docker pull $IMAGE_NAME:$tag || true
+            existing=$(docker images -q $IMAGE_NAME:$tag)
+            if [[ $existing != "" ]]; then
+              echo "Tag already exists, not overwriting"
+              exit 1
+            fi
+            docker tag $SOURCE_IMAGE:$tag $IMAGE_NAME:$tag
+            docker push $IMAGE_NAME:$tag
+
 workflows:
   version: 2
+
   build-deploy:
     jobs:
       - lint
-      - build
+      - build:
+          # Runs on all branches and tags matching /v.*/
+          filters:
+            tags:
+              only: /v.*/
+      - docker_release:
+          requires:
+            - build
+          # Only run on tags matching /v.*/
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /v.*/
