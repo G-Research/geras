@@ -1,20 +1,33 @@
 # Geras
 [![CircleCI](https://circleci.com/gh/G-Research/geras/tree/master.svg?style=svg)](https://circleci.com/gh/G-Research/geras/tree/master)
 
-The goal of this project is to make it possible to run PromQL queries on OpenTSDB.
+Geras provides a [Thanos](https://thanos.io) Store API for the [OpenTSDB](http://opentsdb.net) HTTP API.
+This makes it possible to query OpenTSDB via PromQL, through Thanos.
 
-We have achieved this by providing an implementation of the [Thanos](https://github.com/improbable-eng/thanos) StoreAPI. 
-
-Since Thanos's StoreAPI is designed for unified data access and is not too Prometheus specific, Geras is able to provide an implementation which proxies onto the OpenTSDB HTTP API, giving the ability to query OpenTSDB using PromQL, and even enabling unified queries over Prometheus and OpenTSDB.
+Since Thanos's StoreAPI is designed for unified data access and is not too Prometheus specific,
+Geras is able to provide an implementation which proxies onto the OpenTSDB HTTP API, giving the
+ability to query OpenTSDB using PromQL, and even enabling unified queries (including joins) over
+Prometheus and OpenTSDB.
 
 ## Build
 
 ```
 go get github.com/G-Research/geras/cmd/geras
-
 ```
 
 After the build you will have a self-contained binary (`geras`). It writes logs to `stdout`.
+
+A Dockerfile is also provided (see [docker-compose.yaml](test/docker-compose.yaml) for an example of using it).
+
+## Deployment
+
+At a high level:
+
+* Run Geras somewhere and point it to OpenTSDB: `-opentsdb-address opentsdb:4242`;
+* Configure a Thanos query instance and/or ruler with `--store:geras:19000` (i.e. the gRPC listen address).
+
+Geras additionally listens on a HTTP port for Prometheus `/metrics` queries and some debug details
+(using x/net/trace, see for example `/debug/requests` and `/debug/events`.
 
 ## Usage
 
@@ -62,10 +75,8 @@ When specifying multiple labels, you will need to repeat the argument name, e.g:
 
 ## Limitations
 
-* PromQL supports queries without `__name__`. This is not allowed in geras and it will raise an error.
-* Geras periodically loads metric names from OpenTSDB and keeps them in memory to support queries like `{__name__=~""}`.
+* PromQL supports queries without `__name__`. This is not possible in OpenTSDB and no results will be returned if the query doesn't match on a metric name.
+* Geras periodically loads metric names from OpenTSDB and keeps them in memory to support queries like `{__name__=~"regexp"}`.
 * Thanos' primary timeseries backend is Prometheus, which doesn't support `.` in metric names. However OpenTSDB metrics generally use `.` as a seperator within names. In order to query names containing a `.` you will need to either:
-  * Replace all `.` with `:` in your query
-    
-    OR
-  * Use the magic `__name__` label to specify the metric name, e.g. `{__name__="cpu.percent"}`
+  * Replace all `.` with `:` in your query; or
+  * Use the `__name__` label to specify the metric name, e.g. `{__name__="cpu.percent"}`
