@@ -24,7 +24,7 @@ A Dockerfile is also provided (see [docker-compose.yaml](test/docker-compose.yam
 At a high level:
 
 * Run Geras somewhere and point it to OpenTSDB: `-opentsdb-address opentsdb:4242`;
-* Configure a Thanos query instance and/or ruler with `--store:geras:19000` (i.e. the gRPC listen address).
+* Configure a Thanos query instance and/or ruler with `--store=geras:19000` (i.e. the gRPC listen address).
 
 Geras additionally listens on a HTTP port for Prometheus `/metrics` queries and some debug details
 (using x/net/trace, see for example `/debug/requests` and `/debug/events`.
