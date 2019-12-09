@@ -575,6 +575,225 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 			},
 			err: errors.New(`Metric "bad.metric" is blocked on Geras`),
 		},
+		{
+			req: storepb.SeriesRequest{
+				MinTime: 0,
+				MaxTime: 100,
+				Matchers: []storepb.LabelMatcher{
+					{
+						Type:  storepb.LabelMatcher_EQ,
+						Name:  "__name__",
+						Value: "test.metric",
+					},
+				},
+				MaxResolutionWindow:     60000,
+				Aggregates:              []storepb.Aggr{storepb.Aggr_RAW},
+				PartialResponseDisabled: false,
+			},
+			tsdbQ: &opentsdb.QueryParam{
+				Start: 0,
+				End:   100,
+				Queries: []opentsdb.SubQuery{
+					{
+						Aggregator: "none",
+						Metric:     "test.metric",
+						Fiters:     []opentsdb.Filter{},
+					},
+				},
+			},
+		},
+		{
+			req: storepb.SeriesRequest{
+				MinTime: 0,
+				MaxTime: 100,
+				Matchers: []storepb.LabelMatcher{
+					{
+						Type:  storepb.LabelMatcher_EQ,
+						Name:  "__name__",
+						Value: "test.metric",
+					},
+				},
+				MaxResolutionWindow:     60000,
+				Aggregates:              []storepb.Aggr{storepb.Aggr_COUNT},
+				PartialResponseDisabled: false,
+			},
+			tsdbQ: &opentsdb.QueryParam{
+				Start: 0,
+				End:   100,
+				Queries: []opentsdb.SubQuery{
+					{
+						Aggregator: "none",
+						Downsample: "60s-count",
+						Metric:     "test.metric",
+						Fiters:     []opentsdb.Filter{},
+					},
+				},
+			},
+		},
+		{
+			req: storepb.SeriesRequest{
+				MinTime: 0,
+				MaxTime: 100,
+				Matchers: []storepb.LabelMatcher{
+					{
+						Type:  storepb.LabelMatcher_EQ,
+						Name:  "__name__",
+						Value: "test.metric",
+					},
+				},
+				MaxResolutionWindow:     120000,
+				Aggregates:              []storepb.Aggr{storepb.Aggr_MAX},
+				PartialResponseDisabled: false,
+			},
+			tsdbQ: &opentsdb.QueryParam{
+				Start: 0,
+				End:   100,
+				Queries: []opentsdb.SubQuery{
+					{
+						Aggregator: "none",
+						Downsample: "120s-max",
+						Metric:     "test.metric",
+						Fiters:     []opentsdb.Filter{},
+					},
+				},
+			},
+		},
+		{
+			req: storepb.SeriesRequest{
+				MinTime: 0,
+				MaxTime: 100,
+				Matchers: []storepb.LabelMatcher{
+					{
+						Type:  storepb.LabelMatcher_EQ,
+						Name:  "__name__",
+						Value: "test.metric",
+					},
+				},
+				MaxResolutionWindow:     3600000,
+				Aggregates:              []storepb.Aggr{storepb.Aggr_MIN},
+				PartialResponseDisabled: false,
+			},
+			tsdbQ: &opentsdb.QueryParam{
+				Start: 0,
+				End:   100,
+				Queries: []opentsdb.SubQuery{
+					{
+						Aggregator: "none",
+						Downsample: "3600s-min",
+						Metric:     "test.metric",
+						Fiters:     []opentsdb.Filter{},
+					},
+				},
+			},
+		},
+		{
+			req: storepb.SeriesRequest{
+				MinTime: 0,
+				MaxTime: 100,
+				Matchers: []storepb.LabelMatcher{
+					{
+						Type:  storepb.LabelMatcher_EQ,
+						Name:  "__name__",
+						Value: "test.metric",
+					},
+				},
+				MaxResolutionWindow:     15000,
+				Aggregates:              []storepb.Aggr{storepb.Aggr_SUM},
+				PartialResponseDisabled: false,
+			},
+			tsdbQ: &opentsdb.QueryParam{
+				Start: 0,
+				End:   100,
+				Queries: []opentsdb.SubQuery{
+					{
+						Aggregator: "none",
+						Downsample: "15s-sum",
+						Metric:     "test.metric",
+						Fiters:     []opentsdb.Filter{},
+					},
+				},
+			},
+		},
+		{
+			req: storepb.SeriesRequest{
+				MinTime: 0,
+				MaxTime: 100,
+				Matchers: []storepb.LabelMatcher{
+					{
+						Type:  storepb.LabelMatcher_EQ,
+						Name:  "__name__",
+						Value: "test.metric",
+					},
+				},
+				MaxResolutionWindow:     60000,
+				Aggregates:              []storepb.Aggr{storepb.Aggr_COUNTER},
+				PartialResponseDisabled: false,
+			},
+			tsdbQ: &opentsdb.QueryParam{
+				Start: 0,
+				End:   100,
+				Queries: []opentsdb.SubQuery{
+					{
+						Aggregator: "none",
+						Downsample: "60s-avg",
+						Metric:     "test.metric",
+						Fiters:     []opentsdb.Filter{},
+					},
+				},
+			},
+		},
+		{
+			req: storepb.SeriesRequest{
+				MinTime: 0,
+				MaxTime: 100,
+				Matchers: []storepb.LabelMatcher{
+					{
+						Type:  storepb.LabelMatcher_EQ,
+						Name:  "__name__",
+						Value: "test.metric",
+					},
+				},
+				MaxResolutionWindow:     60000,
+				Aggregates:              []storepb.Aggr{storepb.Aggr_COUNT, storepb.Aggr_SUM, storepb.Aggr_MIN, storepb.Aggr_MAX, storepb.Aggr_COUNTER},
+				PartialResponseDisabled: false,
+			},
+			tsdbQ: &opentsdb.QueryParam{
+				Start: 0,
+				End:   100,
+				Queries: []opentsdb.SubQuery{
+					{
+						Aggregator: "none",
+						Downsample: "60s-count",
+						Metric:     "test.metric",
+						Fiters:     []opentsdb.Filter{},
+					},
+					{
+						Aggregator: "none",
+						Downsample: "60s-sum",
+						Metric:     "test.metric",
+						Fiters:     []opentsdb.Filter{},
+					},
+					{
+						Aggregator: "none",
+						Downsample: "60s-min",
+						Metric:     "test.metric",
+						Fiters:     []opentsdb.Filter{},
+					},
+					{
+						Aggregator: "none",
+						Downsample: "60s-max",
+						Metric:     "test.metric",
+						Fiters:     []opentsdb.Filter{},
+					},
+					{
+						Aggregator: "none",
+						Downsample: "60s-avg",
+						Metric:     "test.metric",
+						Fiters:     []opentsdb.Filter{},
+					},
+				},
+			},
+		},
 	}
 
 	for i, test := range testCases {

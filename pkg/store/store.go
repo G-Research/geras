@@ -394,12 +394,81 @@ func (store *OpenTSDBStore) composeOpenTSDBQuery(req *storepb.SeriesRequest) (op
 		return opentsdb.QueryParam{}, nil, nil
 	}
 
-	subQueries := make([]opentsdb.SubQuery, len(metricNames))
+	aggregationCount := 0
+	needRawAggregation := true
+	var downsampleSecs int64
+	if req.MaxResolutionWindow != 0 {
+		needRawAggregation = false
+		for _, agg := range req.Aggregates {
+			switch agg {
+			case storepb.Aggr_RAW:
+				needRawAggregation = true
+				break
+			case storepb.Aggr_COUNT:
+				fallthrough
+			case storepb.Aggr_SUM:
+				fallthrough
+			case storepb.Aggr_MIN:
+				fallthrough
+			case storepb.Aggr_MAX:
+				fallthrough
+			case storepb.Aggr_COUNTER:
+				aggregationCount++
+				break
+			default:
+				level.Info(store.logger).Log("err", fmt.Sprintf("Unrecognised series aggregator: %v", agg))
+				needRawAggregation = true
+				break
+			}
+		}
+		downsampleSecs = req.MaxResolutionWindow / 1000
+	}
+	if needRawAggregation {
+		aggregationCount++
+	}
+	subQueries := make([]opentsdb.SubQuery, len(metricNames) *aggregationCount)
 	for i, mn := range metricNames {
-		subQueries[i] = opentsdb.SubQuery{
-			Aggregator: "none",
-			Metric:     mn,
-			Fiters:     tagFilters,
+		aggregationIndex := 0
+		if req.MaxResolutionWindow != 0 {
+			for _, agg := range req.Aggregates {
+				var downsample string
+				addAgg := true
+				switch agg {
+				case storepb.Aggr_COUNT:
+					downsample = "count"
+					break
+				case storepb.Aggr_SUM:
+					downsample = "sum"
+					break
+				case storepb.Aggr_MIN:
+					downsample = "min"
+					break
+				case storepb.Aggr_MAX:
+					downsample = "max"
+					break
+				case storepb.Aggr_COUNTER:
+					downsample = "avg"
+					break
+				default:
+					addAgg = false
+				}
+				if addAgg {
+					subQueries[(i*aggregationCount)+aggregationIndex] = opentsdb.SubQuery{
+						Aggregator: "none",
+						Downsample: string(downsampleSecs) + "s-" + downsample,
+						Metric:     mn,
+						Fiters:     tagFilters,
+					}
+					aggregationIndex++
+				}
+			}
+		}
+		if needRawAggregation {
+			subQueries[(i*aggregationCount)+aggregationIndex] = opentsdb.SubQuery{
+				Aggregator: "none",
+				Metric:     mn,
+				Fiters:     tagFilters,
+			}
 		}
 	}
 	query := opentsdb.QueryParam{
