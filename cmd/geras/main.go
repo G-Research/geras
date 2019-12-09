@@ -13,7 +13,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -192,7 +192,7 @@ func main() {
 	healthpb.RegisterHealthServer(grpcSrv, srv)
 	// After all your registrations, make sure all of the Prometheus metrics are initialized.
 	grpc_prometheus.Register(grpcSrv)
-	
+
 	l, err := net.Listen("tcp", *grpcListenAddr)
 	if err != nil {
 		level.Error(logger).Log("err", err)
