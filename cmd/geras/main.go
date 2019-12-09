@@ -13,7 +13,6 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -30,6 +29,8 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	opentsdb "github.com/G-Research/opentsdb-goclient/client"
+
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 )
 
 func NewConfiguredLogger(format string, logLevel string) (log.Logger, error) {
