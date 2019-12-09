@@ -426,7 +426,7 @@ func (store *OpenTSDBStore) composeOpenTSDBQuery(req *storepb.SeriesRequest) (op
 	if needRawAggregation {
 		aggregationCount++
 	}
-	subQueries := make([]opentsdb.SubQuery, len(metricNames) *aggregationCount)
+	subQueries := make([]opentsdb.SubQuery, len(metricNames)*aggregationCount)
 	for i, mn := range metricNames {
 		aggregationIndex := 0
 		if req.MaxResolutionWindow != 0 {
