@@ -359,7 +359,7 @@ func (store *OpenTSDBStore) getMatchingMetricNames(matcher storepb.LabelMatcher)
 					matchingMetrics = append(matchingMetrics, literalPrefix)
 				}
 			} else {
-				for i:=firstPossibleIndex; i<len(store.metricNames); i++ {
+				for i := firstPossibleIndex; i < len(store.metricNames); i++ {
 					v := store.metricNames[i]
 					if rx.MatchString(v) {
 						matchingMetrics = append(matchingMetrics, v)

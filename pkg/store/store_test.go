@@ -756,32 +756,32 @@ func TestGetMatchingMetricNames(t *testing.T) {
 	}{
 		{
 			input: storepb.LabelMatcher{
-				Name: "tagk",
-				Type: storepb.LabelMatcher_EQ,
+				Name:  "tagk",
+				Type:  storepb.LabelMatcher_EQ,
 				Value: "tagv",
 			},
 			expectedOutput: nil,
 		},
 		{
 			input: storepb.LabelMatcher{
-				Name: "__name__",
-				Type: storepb.LabelMatcher_NEQ,
+				Name:  "__name__",
+				Type:  storepb.LabelMatcher_NEQ,
 				Value: "value",
 			},
 			expectedOutput: nil,
 		},
 		{
 			input: storepb.LabelMatcher{
-				Name: "__name__",
-				Type: storepb.LabelMatcher_NRE,
+				Name:  "__name__",
+				Type:  storepb.LabelMatcher_NRE,
 				Value: "value",
 			},
 			expectedOutput: nil,
 		},
 		{
 			input: storepb.LabelMatcher{
-				Name: "__name__",
-				Type: storepb.LabelMatcher_EQ,
+				Name:  "__name__",
+				Type:  storepb.LabelMatcher_EQ,
 				Value: "metric.name",
 			},
 			expectedOutput: []string{
@@ -790,8 +790,8 @@ func TestGetMatchingMetricNames(t *testing.T) {
 		},
 		{
 			input: storepb.LabelMatcher{
-				Name: "__name__",
-				Type: storepb.LabelMatcher_RE,
+				Name:  "__name__",
+				Type:  storepb.LabelMatcher_RE,
 				Value: "tsd\\..*",
 			},
 			expectedOutput: []string{
@@ -804,8 +804,8 @@ func TestGetMatchingMetricNames(t *testing.T) {
 		},
 		{
 			input: storepb.LabelMatcher{
-				Name: "__name__",
-				Type: storepb.LabelMatcher_RE,
+				Name:  "__name__",
+				Type:  storepb.LabelMatcher_RE,
 				Value: "cpu\\.[a-z]?i.*",
 			},
 			expectedOutput: []string{
