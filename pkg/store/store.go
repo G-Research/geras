@@ -455,7 +455,7 @@ func (store *OpenTSDBStore) composeOpenTSDBQuery(req *storepb.SeriesRequest) (op
 				if addAgg {
 					subQueries[(i*aggregationCount)+aggregationIndex] = opentsdb.SubQuery{
 						Aggregator: "none",
-						Downsample: string(downsampleSecs) + "s-" + downsample,
+						Downsample: fmt.Sprintf("%vs-%s", downsampleSecs, downsample),
 						Metric:     mn,
 						Fiters:     tagFilters,
 					}
