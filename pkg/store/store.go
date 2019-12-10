@@ -64,10 +64,10 @@ func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, reg prom
 
 func (store *OpenTSDBStore) populateMaps() error {
 	store.aggregateToDownsample = map[storepb.Aggr]string{
-		storepb.Aggr_COUNT: "count",
-		storepb.Aggr_SUM: "sum",
-		storepb.Aggr_MIN: "min",
-		storepb.Aggr_MAX: "max",
+		storepb.Aggr_COUNT:   "count",
+		storepb.Aggr_SUM:     "sum",
+		storepb.Aggr_MIN:     "min",
+		storepb.Aggr_MAX:     "max",
 		storepb.Aggr_COUNTER: "avg",
 	}
 	store.downsampleToAggregate = map[string]storepb.Aggr{}
