@@ -967,3 +967,113 @@ func TestConvertOpenTSDBResultsToSeriesResponse(t *testing.T) {
 		}
 	}
 }
+
+func TestGetMatchingMetricNames(t *testing.T) {
+	testCases := []struct {
+		input          storepb.LabelMatcher
+		expectedOutput []string
+	}{
+		{
+			input: storepb.LabelMatcher{
+				Name:  "tagk",
+				Type:  storepb.LabelMatcher_EQ,
+				Value: "tagv",
+			},
+			expectedOutput: nil,
+		},
+		{
+			input: storepb.LabelMatcher{
+				Name:  "__name__",
+				Type:  storepb.LabelMatcher_NEQ,
+				Value: "value",
+			},
+			expectedOutput: nil,
+		},
+		{
+			input: storepb.LabelMatcher{
+				Name:  "__name__",
+				Type:  storepb.LabelMatcher_NRE,
+				Value: "value",
+			},
+			expectedOutput: nil,
+		},
+		{
+			input: storepb.LabelMatcher{
+				Name:  "__name__",
+				Type:  storepb.LabelMatcher_EQ,
+				Value: "metric.name",
+			},
+			expectedOutput: []string{
+				"metric.name",
+			},
+		},
+		{
+			input: storepb.LabelMatcher{
+				Name:  "__name__",
+				Type:  storepb.LabelMatcher_RE,
+				Value: "tsd\\..*",
+			},
+			expectedOutput: []string{
+				"tsd.rpc.errors",
+				"tsd.rpc.exceptions",
+				"tsd.rpc.forbidden",
+				"tsd.rpc.received",
+				"tsd.rpc.unauthorized",
+			},
+		},
+		{
+			input: storepb.LabelMatcher{
+				Name:  "__name__",
+				Type:  storepb.LabelMatcher_RE,
+				Value: "cpu\\.[a-z]?i.*",
+			},
+			expectedOutput: []string{
+				"cpu.idle",
+				"cpu.irq",
+				"cpu.nice",
+			},
+		},
+	}
+
+	for _, test := range testCases {
+		store := &OpenTSDBStore{}
+		store.metricNames = []string{
+			"cpu.idle",
+			"cpu.irq",
+			"cpu.nice",
+			"cpu.sys",
+			"cpu.usr",
+			"tsd.rpc.errors",
+			"tsd.rpc.exceptions",
+			"tsd.rpc.forbidden",
+			"tsd.rpc.received",
+			"tsd.rpc.unauthorized",
+		}
+		output, err := store.getMatchingMetricNames(test.input)
+
+		if test.expectedOutput != nil {
+			if err != nil {
+				t.Errorf("Unexpected error: %v", err.Error())
+			}
+			if output == nil {
+				t.Error("Expected output but not got any")
+			} else if len(output) != len(test.expectedOutput) {
+				t.Error("Number of metrics does not match")
+			} else {
+				for i, expected := range test.expectedOutput {
+					if output[i] != expected {
+						t.Errorf("Metric %v doesn't match expected: %v", output[i], expected)
+					}
+				}
+			}
+		} else {
+			if output != nil {
+				t.Errorf("Unexpected output: %v", output)
+			}
+			if err == nil {
+				t.Error("Expected error but not got one")
+			}
+		}
+	}
+
+}

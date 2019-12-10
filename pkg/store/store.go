@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -320,6 +321,7 @@ func (store *OpenTSDBStore) loadAllMetricNames(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	sort.Strings(metricNames)
 
 	store.metricsNamesLock.Lock()
 	store.metricNames = metricNames
@@ -349,9 +351,30 @@ func (store *OpenTSDBStore) getMatchingMetricNames(matcher storepb.LabelMatcher)
 		}
 		var matchingMetrics []string
 		store.metricsNamesLock.RLock()
-		for _, v := range store.metricNames {
-			if rx.MatchString(v) {
-				matchingMetrics = append(matchingMetrics, v)
+		literalPrefix, complete := rx.LiteralPrefix()
+		if literalPrefix != "" {
+			firstPossibleIndex := sort.SearchStrings(store.metricNames, literalPrefix)
+			if complete {
+				if firstPossibleIndex < len(store.metricNames) && store.metricNames[firstPossibleIndex] == literalPrefix {
+					matchingMetrics = append(matchingMetrics, literalPrefix)
+				}
+			} else {
+				for i := firstPossibleIndex; i < len(store.metricNames); i++ {
+					v := store.metricNames[i]
+					if rx.MatchString(v) {
+						matchingMetrics = append(matchingMetrics, v)
+					} else {
+						if !strings.HasPrefix(v, literalPrefix) {
+							break
+						}
+					}
+				}
+			}
+		} else {
+			for _, v := range store.metricNames {
+				if rx.MatchString(v) {
+					matchingMetrics = append(matchingMetrics, v)
+				}
 			}
 		}
 		store.metricsNamesLock.RUnlock()

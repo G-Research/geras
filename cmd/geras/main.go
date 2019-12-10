@@ -29,6 +29,8 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	opentsdb "github.com/G-Research/opentsdb-goclient/client"
+
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 )
 
 func NewConfiguredLogger(format string, logLevel string) (log.Logger, error) {
@@ -182,9 +184,16 @@ func main() {
 
 	// create openTSDBStore and expose its api on a grpc server
 	srv := store.NewOpenTSDBStore(logger, client, prometheus.DefaultRegisterer, *refreshInterval, storeLabels, allowedMetricNames, blockedMetricNames, *enableMetricSuggestions, *healthcheckMetric)
-	grpcSrv := grpc.NewServer()
+	grpcSrv := grpc.NewServer(
+		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
+		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
+	)
+
 	storepb.RegisterStoreServer(grpcSrv, srv)
 	healthpb.RegisterHealthServer(grpcSrv, srv)
+	// After all your registrations, make sure all of the Prometheus metrics are initialized.
+	grpc_prometheus.Register(grpcSrv)
+
 	l, err := net.Listen("tcp", *grpcListenAddr)
 	if err != nil {
 		level.Error(logger).Log("err", err)
