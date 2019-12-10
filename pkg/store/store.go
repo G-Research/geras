@@ -478,25 +478,11 @@ func (store *OpenTSDBStore) composeOpenTSDBQuery(req *storepb.SeriesRequest) (op
 		aggregationIndex := 0
 		if req.MaxResolutionWindow != 0 {
 			for _, agg := range req.Aggregates {
-				var downsample string
 				addAgg := true
-				switch agg {
-				case storepb.Aggr_COUNT:
-					downsample = "count"
-					break
-				case storepb.Aggr_SUM:
-					downsample = "sum"
-					break
-				case storepb.Aggr_MIN:
-					downsample = "min"
-					break
-				case storepb.Aggr_MAX:
-					downsample = "max"
-					break
-				case storepb.Aggr_COUNTER:
-					downsample = "avg"
-					break
-				default:
+				var downsample string
+				if ds, exists := store.aggregateToDownsample[agg]; exists {
+					downsample = ds
+				} else {
 					addAgg = false
 				}
 				if addAgg {

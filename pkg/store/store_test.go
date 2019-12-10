@@ -807,6 +807,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 			allowedMetricNames: allowedMetrics,
 			blockedMetricNames: test.blockedMetrics,
 		}
+		store.populateMaps()
 
 		p, _, err := store.composeOpenTSDBQuery(&test.req)
 		if test.err != nil {
