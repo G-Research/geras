@@ -888,8 +888,9 @@ func newDps(in map[string]interface{}) (out opentsdb.DataPoints) {
 
 func TestConvertOpenTSDBResultsToSeriesResponse(t *testing.T) {
 	testCases := []struct {
-		input          opentsdb.QueryRespItem
-		expectedOutput *storepb.SeriesResponse
+		input              opentsdb.QueryRespItem
+		expectedOutput     *storepb.SeriesResponse
+		expectedChunkTypes []storepb.Aggr
 	}{
 		{
 			input: opentsdb.QueryRespItem{
@@ -901,6 +902,7 @@ func TestConvertOpenTSDBResultsToSeriesResponse(t *testing.T) {
 				Labels: []storepb.Label{{Name: "__name__", Value: "metric"}},
 				Chunks: []storepb.AggrChunk{},
 			}),
+			expectedChunkTypes: []storepb.Aggr{},
 		},
 		{
 			input: opentsdb.QueryRespItem{
@@ -916,6 +918,7 @@ func TestConvertOpenTSDBResultsToSeriesResponse(t *testing.T) {
 				Labels: []storepb.Label{{Name: "__name__", Value: "metric"}, {Name: "a", Value: "b"}},
 				Chunks: []storepb.AggrChunk{{MinTime: 1, MaxTime: 3}},
 			}),
+			expectedChunkTypes: []storepb.Aggr{storepb.Aggr_RAW},
 		},
 		{
 			input: opentsdb.QueryRespItem{
@@ -934,10 +937,147 @@ func TestConvertOpenTSDBResultsToSeriesResponse(t *testing.T) {
 					{Name: "a", Value: "b"}},
 				Chunks: []storepb.AggrChunk{{MinTime: 10, MaxTime: 13}},
 			}),
+			expectedChunkTypes: []storepb.Aggr{storepb.Aggr_RAW},
+		},
+		{
+			input: opentsdb.QueryRespItem{
+				Metric: "metric1",
+				Tags:   map[string]string{},
+				Dps: newDps(map[string]interface{}{
+					"10": 1.0,
+					"12": 1.5,
+					"13": 2.0,
+				}),
+				Query: opentsdb.SubQuery{
+					Aggregator: "none",
+					Metric:     "metric",
+					Rate:       false,
+				},
+			},
+			expectedOutput: storepb.NewSeriesResponse(&storepb.Series{
+				Labels: []storepb.Label{{Name: "__name__", Value: "metric1"}},
+				Chunks: []storepb.AggrChunk{{MinTime: 10, MaxTime: 13}},
+			}),
+			expectedChunkTypes: []storepb.Aggr{storepb.Aggr_RAW},
+		},
+		{
+			input: opentsdb.QueryRespItem{
+				Metric: "metric1",
+				Tags:   map[string]string{},
+				Dps: newDps(map[string]interface{}{
+					"10": 1.0,
+					"12": 1.5,
+					"13": 2.0,
+				}),
+				Query: opentsdb.SubQuery{
+					Aggregator: "none",
+					Metric:     "metric",
+					Rate:       false,
+					Downsample: "60s-count",
+				},
+			},
+			expectedOutput: storepb.NewSeriesResponse(&storepb.Series{
+				Labels: []storepb.Label{{Name: "__name__", Value: "metric1"}},
+				Chunks: []storepb.AggrChunk{{MinTime: 10, MaxTime: 13}},
+			}),
+			expectedChunkTypes: []storepb.Aggr{storepb.Aggr_COUNT},
+		},
+		{
+			input: opentsdb.QueryRespItem{
+				Metric: "metric1",
+				Tags:   map[string]string{},
+				Dps: newDps(map[string]interface{}{
+					"10": 1.0,
+					"12": 1.5,
+					"13": 2.0,
+				}),
+				Query: opentsdb.SubQuery{
+					Aggregator: "none",
+					Metric:     "metric",
+					Rate:       false,
+					Downsample: "60s-sum",
+				},
+			},
+			expectedOutput: storepb.NewSeriesResponse(&storepb.Series{
+				Labels: []storepb.Label{{Name: "__name__", Value: "metric1"}},
+				Chunks: []storepb.AggrChunk{{MinTime: 10, MaxTime: 13}},
+			}),
+			expectedChunkTypes: []storepb.Aggr{storepb.Aggr_SUM},
+		},
+		{
+			input: opentsdb.QueryRespItem{
+				Metric: "metric1",
+				Tags:   map[string]string{},
+				Dps: newDps(map[string]interface{}{
+					"10": 1.0,
+					"12": 1.5,
+					"13": 2.0,
+				}),
+				Query: opentsdb.SubQuery{
+					Aggregator: "none",
+					Metric:     "metric",
+					Rate:       false,
+					Downsample: "60s-min",
+				},
+			},
+			expectedOutput: storepb.NewSeriesResponse(&storepb.Series{
+				Labels: []storepb.Label{{Name: "__name__", Value: "metric1"}},
+				Chunks: []storepb.AggrChunk{{MinTime: 10, MaxTime: 13}},
+			}),
+			expectedChunkTypes: []storepb.Aggr{storepb.Aggr_MIN},
+		},
+		{
+			input: opentsdb.QueryRespItem{
+				Metric: "metric1",
+				Tags:   map[string]string{},
+				Dps: newDps(map[string]interface{}{
+					"10": 1.0,
+					"12": 1.5,
+					"13": 2.0,
+				}),
+				Query: opentsdb.SubQuery{
+					Aggregator: "none",
+					Metric:     "metric",
+					Rate:       false,
+					Downsample: "60s-max",
+				},
+			},
+			expectedOutput: storepb.NewSeriesResponse(&storepb.Series{
+				Labels: []storepb.Label{{Name: "__name__", Value: "metric1"}},
+				Chunks: []storepb.AggrChunk{{MinTime: 10, MaxTime: 13}},
+			}),
+			expectedChunkTypes: []storepb.Aggr{storepb.Aggr_MAX},
+		},
+		{
+			input: opentsdb.QueryRespItem{
+				Metric: "metric1",
+				Tags:   map[string]string{},
+				Dps: newDps(map[string]interface{}{
+					"10": 1.0,
+					"12": 1.5,
+					"13": 2.0,
+				}),
+				Query: opentsdb.SubQuery{
+					Aggregator: "none",
+					Metric:     "metric",
+					Rate:       false,
+					Downsample: "60s-avg",
+				},
+			},
+			expectedOutput: storepb.NewSeriesResponse(&storepb.Series{
+				Labels: []storepb.Label{{Name: "__name__", Value: "metric1"}},
+				Chunks: []storepb.AggrChunk{{MinTime: 10, MaxTime: 13}},
+			}),
+			expectedChunkTypes: []storepb.Aggr{storepb.Aggr_COUNTER},
 		},
 	}
 	for _, test := range testCases {
-		converted, _, err := convertOpenTSDBResultsToSeriesResponse(&test.input)
+		store := OpenTSDBStore{}
+		err := store.populateMaps()
+		if err != nil {
+			t.Errorf("unexpected error: %s", err.Error())
+		}
+		converted, _, err := convertOpenTSDBResultsToSeriesResponse(&test.input, store.downsampleToAggregate)
 		if err != nil {
 			t.Errorf("unexpected error: %s", err.Error())
 		}
@@ -958,11 +1098,47 @@ func TestConvertOpenTSDBResultsToSeriesResponse(t *testing.T) {
 			t.Error("number of chunks does not match")
 		}
 		for ci, chunk := range test.expectedOutput.GetSeries().Chunks {
-			if chunk.MinTime != converted.GetSeries().Chunks[ci].MinTime {
+			convertedChunk := converted.GetSeries().Chunks[ci]
+			if chunk.MinTime != convertedChunk.MinTime {
 				t.Errorf("chunk %d min time is not the expected: %d", ci, chunk.MinTime)
 			}
-			if chunk.MaxTime != converted.GetSeries().Chunks[ci].MaxTime {
+			if chunk.MaxTime != convertedChunk.MaxTime {
 				t.Errorf("chunk %d max time is not the expected: %d != %d ", ci, chunk.MaxTime, converted.GetSeries().Chunks[ci].MaxTime)
+			}
+			expectedChunkType := test.expectedChunkTypes[ci]
+			switch expectedChunkType {
+			case storepb.Aggr_RAW:
+				if convertedChunk.Raw == nil {
+					t.Errorf("chunk %d raw content not set", ci)
+				}
+				break
+			case storepb.Aggr_COUNT:
+				if convertedChunk.Count == nil {
+					t.Errorf("chunk %d raw content not set", ci)
+				}
+				break
+			case storepb.Aggr_SUM:
+				if convertedChunk.Sum == nil {
+					t.Errorf("chunk %d raw content not set", ci)
+				}
+				break
+			case storepb.Aggr_MIN:
+				if convertedChunk.Min == nil {
+					t.Errorf("chunk %d raw content not set", ci)
+				}
+				break
+			case storepb.Aggr_MAX:
+				if convertedChunk.Max == nil {
+					t.Errorf("chunk %d raw content not set", ci)
+				}
+				break
+			case storepb.Aggr_COUNTER:
+				if convertedChunk.Counter == nil {
+					t.Errorf("chunk %d raw content not set", ci)
+				}
+				break
+			default:
+				t.Errorf("Unknown chunk type %d expected for chunk %d", expectedChunkType, ci)
 			}
 		}
 	}
@@ -1036,18 +1212,19 @@ func TestGetMatchingMetricNames(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		store := &OpenTSDBStore{}
-		store.metricNames = []string{
-			"cpu.idle",
-			"cpu.irq",
-			"cpu.nice",
-			"cpu.sys",
-			"cpu.usr",
-			"tsd.rpc.errors",
-			"tsd.rpc.exceptions",
-			"tsd.rpc.forbidden",
-			"tsd.rpc.received",
-			"tsd.rpc.unauthorized",
+		store := &OpenTSDBStore{
+			metricNames: []string{
+				"cpu.idle",
+				"cpu.irq",
+				"cpu.nice",
+				"cpu.sys",
+				"cpu.usr",
+				"tsd.rpc.errors",
+				"tsd.rpc.exceptions",
+				"tsd.rpc.forbidden",
+				"tsd.rpc.received",
+				"tsd.rpc.unauthorized",
+			},
 		}
 		output, err := store.getMatchingMetricNames(test.input)
 

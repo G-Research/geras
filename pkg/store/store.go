@@ -38,9 +38,11 @@ type OpenTSDBStore struct {
 	enableMetricSuggestions                bool
 	storeLabels                            []storepb.Label
 	healthcheckMetric                      string
+	aggregateToDownsample                  map[storepb.Aggr]string
+	downsampleToAggregate                  map[string]storepb.Aggr
 }
 
-func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, reg prometheus.Registerer, interval time.Duration, storeLabels []storepb.Label, allowedMetricNames, blockedMetricNames *regexp.Regexp, enableMetricSuggestions bool, healthcheckMetric string) *OpenTSDBStore {
+func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, reg prometheus.Registerer, interval time.Duration, storeLabels []storepb.Label, allowedMetricNames, blockedMetricNames *regexp.Regexp, enableMetricSuggestions bool, healthcheckMetric string) (*OpenTSDBStore, error) {
 	store := &OpenTSDBStore{
 		logger:                  log.With(logger, "component", "opentsdb"),
 		openTSDBClient:          client,
@@ -52,8 +54,30 @@ func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, reg prom
 		blockedMetricNames:      blockedMetricNames,
 		healthcheckMetric:       healthcheckMetric,
 	}
+	err := store.populateMaps()
+	if err != nil {
+		return nil, err
+	}
 	store.updateMetrics(context.Background(), logger)
-	return store
+	return store, nil
+}
+
+func (store *OpenTSDBStore) populateMaps() error {
+	store.aggregateToDownsample = map[storepb.Aggr]string{
+		storepb.Aggr_COUNT: "count",
+		storepb.Aggr_SUM: "sum",
+		storepb.Aggr_MIN: "min",
+		storepb.Aggr_MAX: "max",
+		storepb.Aggr_COUNTER: "avg",
+	}
+	store.downsampleToAggregate = map[string]storepb.Aggr{}
+	for a, d := range store.aggregateToDownsample {
+		if _, exists := store.downsampleToAggregate[d]; exists {
+			return errors.New(fmt.Sprintf("Invalid aggregate/downsample mapping - not reversible for downsample function %s", d))
+		}
+		store.downsampleToAggregate[d] = a
+	}
+	return nil
 }
 
 type internalMetrics struct {
@@ -209,7 +233,7 @@ func (store *OpenTSDBStore) Series(
 			if respI.Error != nil {
 				return respI.Error
 			}
-			res, count, err := convertOpenTSDBResultsToSeriesResponse(respI)
+			res, count, err := convertOpenTSDBResultsToSeriesResponse(respI, store.downsampleToAggregate)
 			if err != nil {
 				return err
 			}
@@ -499,6 +523,7 @@ func (store *OpenTSDBStore) composeOpenTSDBQuery(req *storepb.SeriesRequest) (op
 		End:          req.MaxTime,
 		Queries:      subQueries,
 		MsResolution: true,
+		ShowQuery:    true,
 	}
 	level.Debug(store.logger).Log("tsdb-query", query.String())
 	return query, warnings, nil
@@ -533,7 +558,7 @@ func (store *OpenTSDBStore) checkMetricNames(metricNames []string, fullBlock boo
 	return allowed, warnings, nil
 }
 
-func convertOpenTSDBResultsToSeriesResponse(respI *opentsdb.QueryRespItem) (*storepb.SeriesResponse, int, error) {
+func convertOpenTSDBResultsToSeriesResponse(respI *opentsdb.QueryRespItem, downsampleToAggregate map[string]storepb.Aggr) (*storepb.SeriesResponse, int, error) {
 	seriesLabels := make([]storepb.Label, len(respI.Tags))
 	i := 0
 	for k, v := range respI.Tags {
@@ -541,6 +566,17 @@ func convertOpenTSDBResultsToSeriesResponse(respI *opentsdb.QueryRespItem) (*sto
 		i++
 	}
 	seriesLabels = append(seriesLabels, storepb.Label{Name: "__name__", Value: respI.Metric})
+
+	downsampleFunction := "none"
+	if hyphenIndex := strings.Index(respI.Query.Downsample, "-"); hyphenIndex >= 0 {
+		downsampleFunction = respI.Query.Downsample[hyphenIndex+1:]
+	}
+	var aggregate storepb.Aggr
+	if v, exists := downsampleToAggregate[downsampleFunction]; exists {
+		aggregate = v
+	} else {
+		aggregate = storepb.Aggr_RAW
+	}
 
 	// Turn datapoints into chunks (Prometheus's tsdb encoding)
 	dps := respI.GetDataPoints()
@@ -562,11 +598,28 @@ func convertOpenTSDBResultsToSeriesResponse(respI *opentsdb.QueryRespItem) (*sto
 			}
 			a.Append(int64(dp.Timestamp), dp.Value.(float64))
 		}
-		chunks = append(chunks, storepb.AggrChunk{
+		chunk := &storepb.Chunk{Type: storepb.Chunk_XOR, Data: c.Bytes()}
+		aggrChunk := storepb.AggrChunk{
 			MinTime: minTime,
 			MaxTime: int64(dps[i-1].Timestamp),
-			Raw:     &storepb.Chunk{Type: storepb.Chunk_XOR, Data: c.Bytes()},
-		})
+		}
+		switch aggregate {
+		case storepb.Aggr_COUNT:
+			aggrChunk.Count = chunk
+		case storepb.Aggr_SUM:
+			aggrChunk.Sum = chunk
+		case storepb.Aggr_MIN:
+			aggrChunk.Min = chunk
+		case storepb.Aggr_MAX:
+			aggrChunk.Max = chunk
+		case storepb.Aggr_COUNTER:
+			aggrChunk.Counter = chunk
+		case storepb.Aggr_RAW:
+			fallthrough
+		default:
+			aggrChunk.Raw = chunk
+		}
+		chunks = append(chunks, aggrChunk)
 	}
 	return storepb.NewSeriesResponse(&storepb.Series{
 		Labels: seriesLabels,
