@@ -49,7 +49,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 					{
 						Aggregator: "none",
 						Metric:     "test.metric",
-						Fiters: []opentsdb.Filter{
+						Filters: []opentsdb.Filter{
 							{
 								Type:      "literal_or",
 								Tagk:      "key",
@@ -83,7 +83,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 					{
 						Aggregator: "none",
 						Metric:     "test.metric",
-						Fiters:     []opentsdb.Filter{},
+						Filters:     []opentsdb.Filter{},
 					},
 				},
 			},
@@ -116,7 +116,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 					{
 						Aggregator: "none",
 						Metric:     "test.metric2",
-						Fiters: []opentsdb.Filter{
+						Filters: []opentsdb.Filter{
 							{
 								Type:      "regexp",
 								Tagk:      "host",
@@ -156,7 +156,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 					{
 						Aggregator: "none",
 						Metric:     "test.metric2",
-						Fiters: []opentsdb.Filter{
+						Filters: []opentsdb.Filter{
 							{
 								Type:      "regexp",
 								Tagk:      "host",
@@ -196,7 +196,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 					{
 						Aggregator: "none",
 						Metric:     "test.metric2",
-						Fiters: []opentsdb.Filter{
+						Filters: []opentsdb.Filter{
 							{
 								Type:      "literal_or",
 								Tagk:      "host",
@@ -279,7 +279,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 					{
 						Aggregator: "none",
 						Metric:     "test.metric2",
-						Fiters: []opentsdb.Filter{
+						Filters: []opentsdb.Filter{
 							{
 								Type:      "wildcard",
 								Tagk:      "host",
@@ -324,7 +324,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 					{
 						Aggregator: "none",
 						Metric:     "test.metric2",
-						Fiters: []opentsdb.Filter{
+						Filters: []opentsdb.Filter{
 							{
 								Type:      "not_literal_or",
 								Tagk:      "host",
@@ -368,7 +368,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 					{
 						Aggregator: "none",
 						Metric:     "test.metric2.sub.subsub",
-						Fiters: []opentsdb.Filter{
+						Filters: []opentsdb.Filter{
 							{
 								Type:      "wildcard",
 								Tagk:      "host",
@@ -413,7 +413,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 					{
 						Aggregator: "none",
 						Metric:     "test.metric",
-						Fiters: []opentsdb.Filter{
+						Filters: []opentsdb.Filter{
 							{
 								Type:      "literal_or",
 								Tagk:      "host",
@@ -453,7 +453,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 					{
 						Aggregator: "none",
 						Metric:     "a",
-						Fiters: []opentsdb.Filter{
+						Filters: []opentsdb.Filter{
 							{
 								Type:      "not_literal_or",
 								Tagk:      "key",
@@ -465,7 +465,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 					{
 						Aggregator: "none",
 						Metric:     "b",
-						Fiters: []opentsdb.Filter{
+						Filters: []opentsdb.Filter{
 							{
 								Type:      "not_literal_or",
 								Tagk:      "key",
@@ -477,7 +477,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 					{
 						Aggregator: "none",
 						Metric:     "c",
-						Fiters: []opentsdb.Filter{
+						Filters: []opentsdb.Filter{
 							{
 								Type:      "not_literal_or",
 								Tagk:      "key",
@@ -597,7 +597,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 					{
 						Aggregator: "none",
 						Metric:     "test.metric",
-						Fiters:     []opentsdb.Filter{},
+						Filters:     []opentsdb.Filter{},
 					},
 				},
 			},
@@ -625,7 +625,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 						Aggregator: "none",
 						Downsample: "60s-count",
 						Metric:     "test.metric",
-						Fiters:     []opentsdb.Filter{},
+						Filters:     []opentsdb.Filter{},
 					},
 				},
 			},
@@ -653,7 +653,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 						Aggregator: "none",
 						Downsample: "120s-max",
 						Metric:     "test.metric",
-						Fiters:     []opentsdb.Filter{},
+						Filters:     []opentsdb.Filter{},
 					},
 				},
 			},
@@ -681,7 +681,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 						Aggregator: "none",
 						Downsample: "3600s-min",
 						Metric:     "test.metric",
-						Fiters:     []opentsdb.Filter{},
+						Filters:     []opentsdb.Filter{},
 					},
 				},
 			},
@@ -709,7 +709,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 						Aggregator: "none",
 						Downsample: "15s-sum",
 						Metric:     "test.metric",
-						Fiters:     []opentsdb.Filter{},
+						Filters:     []opentsdb.Filter{},
 					},
 				},
 			},
@@ -737,7 +737,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 						Aggregator: "none",
 						Downsample: "60s-avg",
 						Metric:     "test.metric",
-						Fiters:     []opentsdb.Filter{},
+						Filters:     []opentsdb.Filter{},
 					},
 				},
 			},
@@ -765,31 +765,31 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 						Aggregator: "none",
 						Downsample: "60s-count",
 						Metric:     "test.metric",
-						Fiters:     []opentsdb.Filter{},
+						Filters:     []opentsdb.Filter{},
 					},
 					{
 						Aggregator: "none",
 						Downsample: "60s-sum",
 						Metric:     "test.metric",
-						Fiters:     []opentsdb.Filter{},
+						Filters:     []opentsdb.Filter{},
 					},
 					{
 						Aggregator: "none",
 						Downsample: "60s-min",
 						Metric:     "test.metric",
-						Fiters:     []opentsdb.Filter{},
+						Filters:     []opentsdb.Filter{},
 					},
 					{
 						Aggregator: "none",
 						Downsample: "60s-max",
 						Metric:     "test.metric",
-						Fiters:     []opentsdb.Filter{},
+						Filters:     []opentsdb.Filter{},
 					},
 					{
 						Aggregator: "none",
 						Downsample: "60s-avg",
 						Metric:     "test.metric",
-						Fiters:     []opentsdb.Filter{},
+						Filters:     []opentsdb.Filter{},
 					},
 				},
 			},
@@ -847,14 +847,14 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 					t.Errorf("\taggregator does not match")
 				}
 				// test filters
-				if len(referenceQ.Fiters) != len(subQ.Fiters) {
+				if len(referenceQ.Filters) != len(subQ.Filters) {
 					t.Errorf("\tfilter length does not match")
 				}
 				filters := map[string]opentsdb.Filter{}
-				for _, f := range subQ.Fiters {
+				for _, f := range subQ.Filters {
 					filters[f.Tagk] = f
 				}
-				for _, want := range referenceQ.Fiters {
+				for _, want := range referenceQ.Filters {
 					got, ok := filters[want.Tagk]
 					if !ok {
 						t.Errorf("%d: filter does not exist", i)

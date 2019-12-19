@@ -3,3 +3,4 @@ github.com/G-Research/opentsdb-goclient v0.0.0-20191028155047-1a0d357f6ca7/go.mo
 github.com/G-Research/opentsdb-goclient v0.0.0-20191210204552-9a5d3f5d556d/go.mod h1:oVqXUYMDThF8Uz8WH3f80BlB7+Y5BV4wDtqQ06e4m7g=
 github.com/G-Research/opentsdb-goclient v0.0.0-20191210204552-ccb48600721a/go.mod h1:oVqXUYMDThF8Uz8WH3f80BlB7+Y5BV4wDtqQ06e4m7g=
 github.com/G-Research/opentsdb-goclient v0.0.0-20191219200136-ccb48600721a/go.mod h1:oVqXUYMDThF8Uz8WH3f80BlB7+Y5BV4wDtqQ06e4m7g=
+github.com/G-Research/opentsdb-goclient v0.0.0-20191219203319-f9f2aa5b2624/go.mod h1:oVqXUYMDThF8Uz8WH3f80BlB7+Y5BV4wDtqQ06e4m7g=

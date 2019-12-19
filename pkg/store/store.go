@@ -490,7 +490,7 @@ func (store *OpenTSDBStore) composeOpenTSDBQuery(req *storepb.SeriesRequest) (op
 						Aggregator: "none",
 						Downsample: fmt.Sprintf("%vs-%s", downsampleSecs, downsample),
 						Metric:     mn,
-						Fiters:     tagFilters,
+						Filters:     tagFilters,
 					}
 					aggregationIndex++
 				}
@@ -500,7 +500,7 @@ func (store *OpenTSDBStore) composeOpenTSDBQuery(req *storepb.SeriesRequest) (op
 			subQueries[(i*aggregationCount)+aggregationIndex] = opentsdb.SubQuery{
 				Aggregator: "none",
 				Metric:     mn,
-				Fiters:     tagFilters,
+				Filters:     tagFilters,
 			}
 		}
 	}
