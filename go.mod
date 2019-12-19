@@ -1,7 +1,7 @@
 module github.com/G-Research/geras
 
 require (
-	github.com/G-Research/opentsdb-goclient v0.0.0-20191210204552-9a5d3f5d556d
+	github.com/G-Research/opentsdb-goclient v0.0.0-20191219200136-ccb48600721a
 	github.com/go-kit/kit v0.9.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v0.0.0-20181025070259-68e3a13e4117
 	github.com/pkg/errors v0.8.1
