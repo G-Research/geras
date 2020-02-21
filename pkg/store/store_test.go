@@ -531,7 +531,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 					},
 					{
 						Type:  storepb.LabelMatcher_NRE,
-						Name: "test",
+						Name:  "test",
 						Value: `x|y.*|[a-b]`,
 					},
 				},
