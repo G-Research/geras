@@ -132,7 +132,7 @@ func query(r *http.Request, body []byte) interface{} {
 		if q.Aggregator != "none" {
 			return makeError("only none aggregator supported")
 		}
-		if len(q.Fiters) != 0 {
+		if len(q.Filters) != 0 {
 			return makeError("filter not yet supported")
 		}
 
