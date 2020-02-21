@@ -27,10 +27,16 @@ func TestList(t *testing.T) {
 		{"x|y|z", false, true, []string{"x", "y", "z"}},
 		{"([ab])", false, true, []string{"a", "b"}},
 		{"[a-f]", false, true, []string{"a", "b", "c", "d", "e", "f"}},
+		{"long1|long2", false, true, []string{"long1", "long2"}},
+		{"long[1-9]", false, true, []string{"long1", "long2", "long3", "long4", "long5", "long6", "long7", "long8", "long9"}},
+		// Alternates are the same, simplified to one.
+		{"samething|samething", false, true, []string{"samething"}},
 
 		// We don't handle some aspect
-		{"(^xx|^yy)", false, false, nil}, // Would be easy, but who writes regexps like that anyway.
-		{"^$", false, false, nil},        // Better BeginText/EndText handling could fix this too, probably not worth it.
+		{"(^xx|^yy)", false, false, nil},         // Would be easy, but who writes regexps like that anyway.
+		{"^$", false, false, nil},                // Better BeginText/EndText handling could fix this too, probably not worth it.
+		{"longx[1-3]|longy1", false, false, nil}, // charclasses and alternatives, potentially doable...
+		{"long[1-3]x", false, false, nil},        // charclasses and literals around it, same
 		{"^(?i:xx|yy)$", false, false, nil},
 		{"(xx|yy.)", false, false, nil},
 		{"(xx|yy.*)", false, false, nil},
@@ -55,6 +61,11 @@ func TestList(t *testing.T) {
 		}
 		if len(l) != len(r.expect) {
 			t.Errorf("%q: got %d items, want %d", r.re, len(l), len(r.expect))
+		}
+		for i, item := range r.expect {
+			if l[i] != item {
+				t.Errorf("%q: got l[%d] = %v, want %v", r.re, i, l[i], item)
+			}
 		}
 	}
 }
