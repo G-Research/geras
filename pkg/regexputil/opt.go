@@ -63,15 +63,21 @@ func (r Regexp) recurse(p []*syntax.Regexp, parentOp syntax.Op, level int) [][]r
 			}
 			potential = r.recurse(s.Sub, s.Op, level+1)
 		case syntax.OpCharClass:
-			if len(potential) > 0 && parentOp != syntax.OpAlternate {
+			if len(potential) > 0 && (parentOp != syntax.OpAlternate && parentOp != syntax.OpConcat) {
 				return nil
 			}
 			// Rune is a list of pairs of character ranges in this case, we have to expand
-			for i := 0; i < len(s.Rune); i += 2 {
-				start, end := s.Rune[i], s.Rune[i+1]
-				for r := start; r <= end; r++ {
-					potential = append(potential, []rune{r})
+			runes := expandRunes(s.Rune)
+			if parentOp == syntax.OpConcat {
+				prefixes := potential
+				potential = nil
+				for i := range runes {
+					for _, p := range prefixes {
+						potential = append(potential, append(p, runes[i]...))
+					}
 				}
+			} else {
+				potential = runes
 			}
 		case syntax.OpLiteral:
 			if len(potential) > 0 && parentOp != syntax.OpAlternate {
@@ -79,10 +85,12 @@ func (r Regexp) recurse(p []*syntax.Regexp, parentOp syntax.Op, level int) [][]r
 			}
 			potential = append(potential, s.Rune)
 		case syntax.OpEmptyMatch:
-			if len(potential) > 0 && parentOp != syntax.OpAlternate {
+			if len(potential) > 0 && (parentOp != syntax.OpAlternate && parentOp != syntax.OpConcat) {
 				return nil
 			}
-			potential = append(potential, []rune{})
+			if parentOp != syntax.OpConcat {
+				potential = append(potential, []rune{})
+			}
 		// We only handle full matches on single lines as that's what Prometheus uses.
 		// ^ and $ are therefore meaningless, but people do use them, so ignore if in the correct place.
 		case syntax.OpBeginText:
@@ -100,4 +108,15 @@ func (r Regexp) recurse(p []*syntax.Regexp, parentOp syntax.Op, level int) [][]r
 		}
 	}
 	return potential
+}
+
+func expandRunes(s []rune) [][]rune {
+	var ret [][]rune
+	for i := 0; i < len(s); i += 2 {
+		start, end := s[i], s[i+1]
+		for r := start; r <= end; r++ {
+			ret = append(ret, []rune{r})
+		}
+	}
+	return ret
 }
