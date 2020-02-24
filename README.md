@@ -1,5 +1,8 @@
 # Geras
+
 [![CircleCI](https://circleci.com/gh/G-Research/geras/tree/master.svg?style=svg)](https://circleci.com/gh/G-Research/geras/tree/master)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
 
 Geras provides a [Thanos](https://thanos.io) Store API for the [OpenTSDB](http://opentsdb.net) HTTP API.
 This makes it possible to query OpenTSDB via PromQL, through Thanos.
