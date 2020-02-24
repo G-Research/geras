@@ -411,6 +411,9 @@ func (store *OpenTSDBStore) composeOpenTSDBQuery(req *storepb.SeriesRequest) (op
 	var tagFilters []opentsdb.Filter
 	var metricNames []string
 	var err error
+	// Find __name__ matcher first so that checkMetricNames can check if the
+	// metric is whitelisted on Geras. This avoids sending errors about other
+	// labels if __name__ is later skipped.
 	for _, matcher := range req.Matchers {
 		if matcher.Name == "__name__" {
 			metricNames, err = store.getMatchingMetricNames(matcher)
@@ -418,14 +421,8 @@ func (store *OpenTSDBStore) composeOpenTSDBQuery(req *storepb.SeriesRequest) (op
 				level.Info(store.logger).Log("err", err)
 				return opentsdb.QueryParam{}, nil, err
 			}
-			continue
+			break
 		}
-		f, err := convertPromQLMatcherToFilter(matcher)
-		if err != nil {
-			level.Info(store.logger).Log("err", err)
-			return opentsdb.QueryParam{}, nil, err
-		}
-		tagFilters = append(tagFilters, f)
 	}
 	var warnings []error
 	metricNames, warnings, err = store.checkMetricNames(metricNames, true)
@@ -437,8 +434,20 @@ func (store *OpenTSDBStore) composeOpenTSDBQuery(req *storepb.SeriesRequest) (op
 		// although promQL supports queries without metric names we do not want to
 		// do it at the moment, but don't send an error because it's fine to do
 		// queries that join metrics on Thanos and Geras. e.g.:
-		// {__name__="some.opentsdb.metric",label="x"} or absent({label="x"} * 0
+		// {__name__="some.opentsdb.metric",label="x"} or absent({label="x"}) * 0
 		return opentsdb.QueryParam{}, nil, nil
+	}
+
+	for _, matcher := range req.Matchers {
+		if matcher.Name == "__name__" {
+			continue
+		}
+		f, err := convertPromQLMatcherToFilter(matcher)
+		if err != nil {
+			level.Info(store.logger).Log("err", err)
+			return opentsdb.QueryParam{}, nil, err
+		}
+		tagFilters = append(tagFilters, f)
 	}
 
 	aggregationCount := 0

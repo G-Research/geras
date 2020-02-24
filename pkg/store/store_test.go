@@ -518,6 +518,30 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 			},
 		},
 		{
+			knownMetrics:   []string{},
+			allowedMetrics: regexp.MustCompile(`test\..*`),
+			req: storepb.SeriesRequest{
+				MinTime: 0,
+				MaxTime: 100,
+				Matchers: []storepb.LabelMatcher{
+					{
+						Type:  storepb.LabelMatcher_EQ,
+						Name:  "__name__",
+						Value: `prometheus_metric`,
+					},
+					{
+						Type:  storepb.LabelMatcher_NRE,
+						Name:  "test",
+						Value: `x|y.*|[a-b]`,
+					},
+				},
+				MaxResolutionWindow:     0,
+				Aggregates:              []storepb.Aggr{storepb.Aggr_SUM},
+				PartialResponseDisabled: false,
+			},
+			tsdbQ: &opentsdb.QueryParam{},
+		},
+		{
 			knownMetrics:   []string{"test.metric"},
 			allowedMetrics: regexp.MustCompile(`^\w+\.`),
 			req: storepb.SeriesRequest{
