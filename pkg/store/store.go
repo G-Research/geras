@@ -411,9 +411,9 @@ func (store *OpenTSDBStore) composeOpenTSDBQuery(req *storepb.SeriesRequest) (op
 	var tagFilters []opentsdb.Filter
 	var metricNames []string
 	var err error
-	// Find __name__ first, if the names aren't whitelisted on Geras then we
-	// shouldn't return an error if the matchers used aren't compatible (!~ in
-	// particular).
+	// Find __name__ matcher first so that checkMetricNames can check if the
+	// metric is whitelisted on Geras. This avoids sending errors about other
+	// labels if __name__ is later skipped.
 	for _, matcher := range req.Matchers {
 		if matcher.Name == "__name__" {
 			metricNames, err = store.getMatchingMetricNames(matcher)
