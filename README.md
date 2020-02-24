@@ -27,7 +27,7 @@ A Dockerfile is also provided (see [docker-compose.yaml](test/docker-compose.yam
 At a high level:
 
 * Run Geras somewhere and point it to OpenTSDB: `-opentsdb-address opentsdb:4242`;
-* Configure a Thanos query instance and/or ruler with `--store=geras:19000` (i.e. the gRPC listen address).
+* Configure a Thanos query instance with `--store=geras:19000` (i.e. the gRPC listen address).
 
 Geras additionally listens on a HTTP port for Prometheus `/metrics` queries and some debug details
 (using x/net/trace, see for example `/debug/requests` and `/debug/events`.
@@ -80,6 +80,7 @@ When specifying multiple labels, you will need to repeat the argument name, e.g:
 
 * PromQL supports queries without `__name__`. This is not possible in OpenTSDB and no results will be returned if the query doesn't match on a metric name.
 * Geras periodically loads metric names from OpenTSDB and keeps them in memory to support queries like `{__name__=~"regexp"}`.
-* Thanos' primary timeseries backend is Prometheus, which doesn't support `.` in metric names. However OpenTSDB metrics generally use `.` as a seperator within names. In order to query names containing a `.` you will need to either:
+* Thanos' primary timeseries backend is Prometheus, which doesn't support unquoted dots in metric names. However OpenTSDB metrics generally use `.` as a seperator within names. In order to query names containing a `.` you will need to either:
   * Replace all `.` with `:` in your query; or
   * Use the `__name__` label to specify the metric name, e.g. `{__name__="cpu.percent"}`
+  * Also watch out for `-` (dashes) in your metric names
