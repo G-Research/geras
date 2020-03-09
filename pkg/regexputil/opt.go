@@ -125,8 +125,8 @@ func expandRunes(s []rune) [][]rune {
 // can be represented as a glob pattern using only "*", it will return "string*"
 // and true. It is assumed the "*" glob character matches 0 or more characters
 // only (i.e. is exactly identical to ".*"). Literal strings (i.e. not
-// containing any "*" will also be returned, if you need to handle these
-// differently it is recommended to call List first).
+// containing any "*") will also be returned, if you need to handle these
+// differently it is recommended to call List first.
 func (r Regexp) Wildcard() (string, bool) {
 	potential := r.wildcardRecurse([]*syntax.Regexp{r.pt}, 0, 0)
 	return string(potential), len(potential) > 0
