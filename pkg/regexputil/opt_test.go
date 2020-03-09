@@ -81,10 +81,12 @@ func TestWildcard(t *testing.T) {
 		{"", false, false, ""},
 		{".*", false, true, "*"},
 		{"test", false, true, "test"},
+		{"^test$", false, true, "test"},
 		{"test.*", false, true, "test*"},
 		{".*test.*", false, true, "*test*"},
 		{".*test", false, true, "*test"},
 		{".*test.*test", false, true, "*test*test"},
+		{"^test.*$", false, true, "test*"},
 
 		// Multiple stars, questionable but handled...
 		{".*.*test", false, true, "**test"},
