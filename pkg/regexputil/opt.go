@@ -24,7 +24,7 @@ func Parse(regexp string) (Regexp, error) {
 // List returns a list of fixed matches if the regexp only matches a fixed set
 // of alternate strings.
 func (r Regexp) List() ([]string, bool) {
-	potential := r.recurse([]*syntax.Regexp{r.pt}, 0, 0)
+	potential := r.listRecurse([]*syntax.Regexp{r.pt}, 0, 0)
 	if len(potential) == 0 {
 		return nil, false
 	}
@@ -35,7 +35,7 @@ func (r Regexp) List() ([]string, bool) {
 	return items, true
 }
 
-func (r Regexp) recurse(p []*syntax.Regexp, parentOp syntax.Op, level int) [][]rune {
+func (r Regexp) listRecurse(p []*syntax.Regexp, parentOp syntax.Op, level int) [][]rune {
 	var potential [][]rune
 	// Concat, Capture, Alternate, (a leaf op) is the most we handle
 	if level > 3 {
@@ -51,17 +51,17 @@ func (r Regexp) recurse(p []*syntax.Regexp, parentOp syntax.Op, level int) [][]r
 			if len(potential) != 0 {
 				return nil
 			}
-			potential = r.recurse(s.Sub, s.Op, level+1)
+			potential = r.listRecurse(s.Sub, s.Op, level+1)
 		case syntax.OpCapture:
 			if len(potential) != 0 {
 				return nil
 			}
-			potential = r.recurse(s.Sub, s.Op, level+1)
+			potential = r.listRecurse(s.Sub, s.Op, level+1)
 		case syntax.OpAlternate:
 			if len(potential) != 0 {
 				return nil
 			}
-			potential = r.recurse(s.Sub, s.Op, level+1)
+			potential = r.listRecurse(s.Sub, s.Op, level+1)
 		case syntax.OpCharClass:
 			if len(potential) > 0 && (parentOp != syntax.OpAlternate && parentOp != syntax.OpConcat) {
 				return nil
@@ -119,4 +119,59 @@ func expandRunes(s []rune) [][]rune {
 		}
 	}
 	return ret
+}
+
+func (r Regexp) Wildcard() (string, bool) {
+	potential := r.wildcardRecurse([]*syntax.Regexp{r.pt}, 0, 0)
+	return string(potential), len(potential) > 0
+}
+
+func (r Regexp) wildcardRecurse(p []*syntax.Regexp, parentOp syntax.Op, level int) []rune {
+	potential := []rune{}
+	for i, s := range p {
+		// Ignore (?i), etc.
+		if (s.Flags & (syntax.FoldCase | syntax.DotNL)) != 0 {
+			return nil
+		}
+		switch s.Op {
+
+		case syntax.OpConcat:
+			// Only expect concat at the root
+			if len(potential) != 0 {
+				return nil
+			}
+			potential = r.wildcardRecurse(s.Sub, s.Op, level+1)
+		case syntax.OpStar:
+			p := r.wildcardRecurse(s.Sub, s.Op, level+1)
+			if p == nil {
+				return nil
+			}
+			potential = append(potential, p...)
+		case syntax.OpAnyCharNotNL:
+			if parentOp != syntax.OpStar {
+				return nil
+			}
+			potential = append(potential, '*')
+		case syntax.OpLiteral:
+			if parentOp != syntax.OpConcat {
+				return nil
+			}
+			potential = append(potential, s.Rune...)
+		// We only handle full matches on single lines as that's what Prometheus uses.
+		// ^ and $ are therefore meaningless, but people do use them, so ignore if in the correct place.
+		case syntax.OpBeginText:
+			if i != 0 {
+				// invalid, skip
+				return nil
+			}
+		case syntax.OpEndText:
+			if i != len(p)-1 {
+				// invalid, skip
+				return nil
+			}
+		default:
+			return nil // unknown op, can't do anything
+		}
+	}
+	return potential
 }

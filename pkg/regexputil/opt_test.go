@@ -69,3 +69,49 @@ func TestList(t *testing.T) {
 		}
 	}
 }
+
+func TestWildcard(t *testing.T) {
+	for _, r := range []struct {
+		re     string
+		err    bool
+		ok     bool
+		expect string
+	}{
+		// Normal cases we expect to handle
+		{"", false, false, ""},
+		{".*", false, true, "*"},
+		{"test.*", false, true, "test*"},
+		{".*test.*", false, true, "*test*"},
+		{".*test", false, true, "*test"},
+		{".*test.*test", false, true, "*test*test"},
+
+		// Multiple stars, questionable but handled...
+		{".*.*test", false, true, "**test"},
+		{".*.*test.*.*.*", false, true, "**test***"},
+
+		// Unhandled
+		{".+", false, false, ""},
+
+		// Errors
+		{".*test.**test", true, false, ""},
+		{"*", true, false, ""},
+	} {
+		p, err := regexputil.Parse(r.re)
+		if err != nil {
+			if !r.err {
+				t.Errorf("%q: got err, want !err", r.re)
+			}
+			continue
+		}
+		if r.err {
+			t.Errorf("%q: got !err, want err", r.re)
+		}
+		l, ok := p.Wildcard()
+		if ok != r.ok {
+			t.Errorf("%q: got %v, want %v", r.re, ok, r.ok)
+		}
+		if l != r.expect {
+			t.Errorf("%q: got %q, want %q", r.re, l, r.expect)
+		}
+	}
+}
