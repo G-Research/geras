@@ -121,6 +121,12 @@ func expandRunes(s []rune) [][]rune {
 	return ret
 }
 
+// Wildcard attempts to convert the regexp into a wildcard form, that is, if it
+// can be represented as a glob pattern using only "*", it will return "string*"
+// and true. It is assumed the "*" glob character matches 0 or more characters
+// only (i.e. is exactly identical to ".*"). Literal strings (i.e. not
+// containing any "*" will also be returned, if you need to handle these
+// differently it is recommended to call List first).
 func (r Regexp) Wildcard() (string, bool) {
 	potential := r.wildcardRecurse([]*syntax.Regexp{r.pt}, 0, 0)
 	return string(potential), len(potential) > 0
@@ -153,7 +159,7 @@ func (r Regexp) wildcardRecurse(p []*syntax.Regexp, parentOp syntax.Op, level in
 			}
 			potential = append(potential, '*')
 		case syntax.OpLiteral:
-			if parentOp != syntax.OpConcat {
+			if parentOp != 0 && parentOp != syntax.OpConcat {
 				return nil
 			}
 			potential = append(potential, s.Rune...)

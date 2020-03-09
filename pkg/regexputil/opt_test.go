@@ -80,6 +80,7 @@ func TestWildcard(t *testing.T) {
 		// Normal cases we expect to handle
 		{"", false, false, ""},
 		{".*", false, true, "*"},
+		{"test", false, true, "test"},
 		{"test.*", false, true, "test*"},
 		{".*test.*", false, true, "*test*"},
 		{".*test", false, true, "*test"},
