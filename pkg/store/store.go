@@ -661,9 +661,9 @@ func convertPromQLMatcherToFilter(matcher storepb.LabelMatcher) (opentsdb.Filter
 		if items, ok := rx.List(); ok {
 			f.Type = "literal_or"
 			f.FilterExp = strings.Join(items, "|")
-		} else if matcher.Value == ".*" {
+		} else if wildcard, ok := rx.Wildcard(); ok {
 			f.Type = "wildcard"
-			f.FilterExp = "*"
+			f.FilterExp = wildcard
 		} else {
 			f.Type = "regexp"
 			f.FilterExp = "^(?:" + matcher.Value + ")$"

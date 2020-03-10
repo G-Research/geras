@@ -137,7 +137,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 					{
 						Type:  storepb.LabelMatcher_RE,
 						Name:  "host",
-						Value: "foo.*",
+						Value: "foo.+",
 					},
 					{
 						Type:  storepb.LabelMatcher_EQ,
@@ -160,7 +160,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 							{
 								Type:      "regexp",
 								Tagk:      "host",
-								FilterExp: "^(?:foo.*)$",
+								FilterExp: "^(?:foo.+)$",
 								GroupBy:   true,
 							},
 						},
@@ -284,6 +284,56 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 								Type:      "wildcard",
 								Tagk:      "host",
 								FilterExp: "*",
+								GroupBy:   true,
+							},
+							{
+								Type:      "not_literal_or",
+								Tagk:      "key",
+								FilterExp: "v",
+								GroupBy:   true,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			req: storepb.SeriesRequest{
+				MinTime: 0,
+				MaxTime: 100,
+				Matchers: []storepb.LabelMatcher{
+					{
+						Type:  storepb.LabelMatcher_RE,
+						Name:  "host",
+						Value: "foo.*",
+					},
+					{
+						Type:  storepb.LabelMatcher_EQ,
+						Name:  "__name__",
+						Value: "test.metric2",
+					},
+					{
+						Type:  storepb.LabelMatcher_NEQ,
+						Name:  "key",
+						Value: "v",
+					},
+				},
+				MaxResolutionWindow:     0,
+				Aggregates:              []storepb.Aggr{storepb.Aggr_MIN},
+				PartialResponseDisabled: false,
+			},
+			tsdbQ: &opentsdb.QueryParam{
+				Start: 0,
+				End:   100,
+				Queries: []opentsdb.SubQuery{
+					{
+						Aggregator: "none",
+						Metric:     "test.metric2",
+						Filters: []opentsdb.Filter{
+							{
+								Type:      "wildcard",
+								Tagk:      "host",
+								FilterExp: "foo*",
 								GroupBy:   true,
 							},
 							{
