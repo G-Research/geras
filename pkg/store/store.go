@@ -36,7 +36,7 @@ type OpenTSDBStore struct {
 	metricRefreshInterval                  time.Duration
 	allowedMetricNames, blockedMetricNames *regexp.Regexp
 	enableMetricSuggestions                bool
-	enableMetricNameRewriting bool
+	enableMetricNameRewriting              bool
 	storeLabels                            []storepb.Label
 	healthcheckMetric                      string
 	aggregateToDownsample                  map[storepb.Aggr]string
@@ -45,16 +45,16 @@ type OpenTSDBStore struct {
 
 func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, reg prometheus.Registerer, interval time.Duration, storeLabels []storepb.Label, allowedMetricNames, blockedMetricNames *regexp.Regexp, enableMetricSuggestions, enableMetricNameRewriting bool, healthcheckMetric string) (*OpenTSDBStore, error) {
 	store := &OpenTSDBStore{
-		logger:                  log.With(logger, "component", "opentsdb"),
-		openTSDBClient:          client,
-		internalMetrics:         newInternalMetrics(reg),
-		metricRefreshInterval:   interval,
-		enableMetricSuggestions: enableMetricSuggestions,
+		logger:                    log.With(logger, "component", "opentsdb"),
+		openTSDBClient:            client,
+		internalMetrics:           newInternalMetrics(reg),
+		metricRefreshInterval:     interval,
+		enableMetricSuggestions:   enableMetricSuggestions,
 		enableMetricNameRewriting: enableMetricNameRewriting,
-		storeLabels:             storeLabels,
-		allowedMetricNames:      allowedMetricNames,
-		blockedMetricNames:      blockedMetricNames,
-		healthcheckMetric:       healthcheckMetric,
+		storeLabels:               storeLabels,
+		allowedMetricNames:        allowedMetricNames,
+		blockedMetricNames:        blockedMetricNames,
+		healthcheckMetric:         healthcheckMetric,
 	}
 	err := store.populateMaps()
 	if err != nil {
