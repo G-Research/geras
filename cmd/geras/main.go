@@ -113,6 +113,7 @@ func main() {
 	allowedMetricNamesRE := flag.String("metrics-allowed-regexp", ".*", "Regexp of metrics to allow")
 	blockedMetricNamesRE := flag.String("metrics-blocked-regexp", "", "Regexp of metrics to block (empty disables blocking)")
 	enableMetricSuggestions := flag.Bool("metrics-suggestions", true, "Enable metric suggestions (can be expensive)")
+	enableMetricNameRewriting := flag.Bool("metrics-name-rewriting", false, "Rewrite '.' to ':' in all responses (Prometheus remote_read won't accept '.', while Thanos will)")
 	var labels multipleStringFlags
 	flag.Var(&labels, "label", "Label to expose on the Store API, of the form '<key>=<value>'. May be repeated.")
 	flag.Parse()
@@ -183,7 +184,7 @@ func main() {
 	prometheus.DefaultRegisterer.MustRegister(version.NewCollector("geras"))
 
 	// create openTSDBStore and expose its api on a grpc server
-	srv, err := store.NewOpenTSDBStore(logger, client, prometheus.DefaultRegisterer, *refreshInterval, storeLabels, allowedMetricNames, blockedMetricNames, *enableMetricSuggestions, *healthcheckMetric)
+	srv, err := store.NewOpenTSDBStore(logger, client, prometheus.DefaultRegisterer, *refreshInterval, storeLabels, allowedMetricNames, blockedMetricNames, *enableMetricSuggestions, *enableMetricNameRewriting, *healthcheckMetric)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		os.Exit(1)
