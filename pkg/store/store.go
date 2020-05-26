@@ -36,23 +36,25 @@ type OpenTSDBStore struct {
 	metricRefreshInterval                  time.Duration
 	allowedMetricNames, blockedMetricNames *regexp.Regexp
 	enableMetricSuggestions                bool
+	enableMetricNameRewriting              bool
 	storeLabels                            []storepb.Label
 	healthcheckMetric                      string
 	aggregateToDownsample                  map[storepb.Aggr]string
 	downsampleToAggregate                  map[string]storepb.Aggr
 }
 
-func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, reg prometheus.Registerer, interval time.Duration, storeLabels []storepb.Label, allowedMetricNames, blockedMetricNames *regexp.Regexp, enableMetricSuggestions bool, healthcheckMetric string) (*OpenTSDBStore, error) {
+func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, reg prometheus.Registerer, interval time.Duration, storeLabels []storepb.Label, allowedMetricNames, blockedMetricNames *regexp.Regexp, enableMetricSuggestions, enableMetricNameRewriting bool, healthcheckMetric string) (*OpenTSDBStore, error) {
 	store := &OpenTSDBStore{
-		logger:                  log.With(logger, "component", "opentsdb"),
-		openTSDBClient:          client,
-		internalMetrics:         newInternalMetrics(reg),
-		metricRefreshInterval:   interval,
-		enableMetricSuggestions: enableMetricSuggestions,
-		storeLabels:             storeLabels,
-		allowedMetricNames:      allowedMetricNames,
-		blockedMetricNames:      blockedMetricNames,
-		healthcheckMetric:       healthcheckMetric,
+		logger:                    log.With(logger, "component", "opentsdb"),
+		openTSDBClient:            client,
+		internalMetrics:           newInternalMetrics(reg),
+		metricRefreshInterval:     interval,
+		enableMetricSuggestions:   enableMetricSuggestions,
+		enableMetricNameRewriting: enableMetricNameRewriting,
+		storeLabels:               storeLabels,
+		allowedMetricNames:        allowedMetricNames,
+		blockedMetricNames:        blockedMetricNames,
+		healthcheckMetric:         healthcheckMetric,
 	}
 	err := store.populateMaps()
 	if err != nil {
@@ -233,7 +235,7 @@ func (store *OpenTSDBStore) Series(
 			if respI.Error != nil {
 				return respI.Error
 			}
-			res, count, err := convertOpenTSDBResultsToSeriesResponse(respI, store.downsampleToAggregate)
+			res, count, err := convertOpenTSDBResultsToSeriesResponse(respI, store.downsampleToAggregate, store.enableMetricNameRewriting)
 			if err != nil {
 				return err
 			}
@@ -553,14 +555,19 @@ func (store *OpenTSDBStore) checkMetricNames(metricNames []string, fullBlock boo
 	return allowed, warnings, nil
 }
 
-func convertOpenTSDBResultsToSeriesResponse(respI *opentsdb.QueryRespItem, downsampleToAggregate map[string]storepb.Aggr) (*storepb.SeriesResponse, int, error) {
+func convertOpenTSDBResultsToSeriesResponse(respI *opentsdb.QueryRespItem, downsampleToAggregate map[string]storepb.Aggr, rewriteName bool) (*storepb.SeriesResponse, int, error) {
 	seriesLabels := make([]storepb.Label, len(respI.Tags))
 	i := 0
 	for k, v := range respI.Tags {
 		seriesLabels[i] = storepb.Label{Name: k, Value: v}
 		i++
 	}
-	seriesLabels = append(seriesLabels, storepb.Label{Name: "__name__", Value: respI.Metric})
+
+	name := respI.Metric
+	if rewriteName {
+		name = strings.ReplaceAll(name, ".", ":")
+	}
+	seriesLabels = append(seriesLabels, storepb.Label{Name: "__name__", Value: name})
 
 	downsampleFunction := "none"
 	if hyphenIndex := strings.Index(respI.Query.Downsample, "-"); hyphenIndex >= 0 {
