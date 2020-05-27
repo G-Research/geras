@@ -34,6 +34,7 @@ type OpenTSDBStore struct {
 	metricNames                            []string
 	metricsNamesLock                       sync.RWMutex
 	metricRefreshInterval                  time.Duration
+	metricRefreshTimeout                   time.Duration
 	allowedMetricNames, blockedMetricNames *regexp.Regexp
 	enableMetricSuggestions                bool
 	enableMetricNameRewriting              bool
@@ -43,12 +44,13 @@ type OpenTSDBStore struct {
 	downsampleToAggregate                  map[string]storepb.Aggr
 }
 
-func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, reg prometheus.Registerer, interval time.Duration, storeLabels []storepb.Label, allowedMetricNames, blockedMetricNames *regexp.Regexp, enableMetricSuggestions, enableMetricNameRewriting bool, healthcheckMetric string) (*OpenTSDBStore, error) {
+func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, reg prometheus.Registerer, refreshInterval, refreshTimeout time.Duration, storeLabels []storepb.Label, allowedMetricNames, blockedMetricNames *regexp.Regexp, enableMetricSuggestions, enableMetricNameRewriting bool, healthcheckMetric string) (*OpenTSDBStore, error) {
 	store := &OpenTSDBStore{
 		logger:                    log.With(logger, "component", "opentsdb"),
 		openTSDBClient:            client,
 		internalMetrics:           newInternalMetrics(reg),
-		metricRefreshInterval:     interval,
+		metricRefreshInterval:     refreshInterval,
+		metricRefreshTimeout:      refreshTimeout,
 		enableMetricSuggestions:   enableMetricSuggestions,
 		enableMetricNameRewriting: enableMetricNameRewriting,
 		storeLabels:               storeLabels,
@@ -121,7 +123,7 @@ func (store *OpenTSDBStore) updateMetrics(ctx context.Context, logger log.Logger
 		events.Printf("Refresh metrics")
 		tr := trace.New("store.updateMetrics", "fetch")
 		defer tr.Finish()
-		ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
+		ctx, cancel := context.WithTimeout(ctx, store.metricRefreshTimeout)
 		defer cancel()
 		err := store.loadAllMetricNames(trace.NewContext(ctx, tr))
 		if err != nil {

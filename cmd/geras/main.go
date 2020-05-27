@@ -110,6 +110,7 @@ func main() {
 	openTSDBAddress := flag.String("opentsdb-address", "", "<host>:<port>")
 	refreshInterval := flag.Duration("metrics-refresh-interval", time.Minute*15,
 		"Time between metric name refreshes. Use negative duration to disable refreshes.")
+	refreshTimeout := flag.Duration("metrics-refresh-timeout", time.Minute*2, "Timeout for metric refreshes")
 	allowedMetricNamesRE := flag.String("metrics-allowed-regexp", ".*", "Regexp of metrics to allow")
 	blockedMetricNamesRE := flag.String("metrics-blocked-regexp", "", "Regexp of metrics to block (empty disables blocking)")
 	enableMetricSuggestions := flag.Bool("metrics-suggestions", true, "Enable metric suggestions (can be expensive)")
@@ -184,7 +185,7 @@ func main() {
 	prometheus.DefaultRegisterer.MustRegister(version.NewCollector("geras"))
 
 	// create openTSDBStore and expose its api on a grpc server
-	srv, err := store.NewOpenTSDBStore(logger, client, prometheus.DefaultRegisterer, *refreshInterval, storeLabels, allowedMetricNames, blockedMetricNames, *enableMetricSuggestions, *enableMetricNameRewriting, *healthcheckMetric)
+	srv, err := store.NewOpenTSDBStore(logger, client, prometheus.DefaultRegisterer, *refreshInterval, *refreshTimeout, storeLabels, allowedMetricNames, blockedMetricNames, *enableMetricSuggestions, *enableMetricNameRewriting, *healthcheckMetric)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		os.Exit(1)
