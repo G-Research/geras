@@ -39,12 +39,17 @@ type OpenTSDBStore struct {
 	enableMetricSuggestions                bool
 	enableMetricNameRewriting              bool
 	storeLabels                            []storepb.Label
+	storeLabelsMap                         map[string]string
 	healthcheckMetric                      string
 	aggregateToDownsample                  map[storepb.Aggr]string
 	downsampleToAggregate                  map[string]storepb.Aggr
 }
 
 func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, reg prometheus.Registerer, refreshInterval, refreshTimeout time.Duration, storeLabels []storepb.Label, allowedMetricNames, blockedMetricNames *regexp.Regexp, enableMetricSuggestions, enableMetricNameRewriting bool, healthcheckMetric string) (*OpenTSDBStore, error) {
+	storeLabelsMap := map[string]string{}
+	for _, l := range storeLabels {
+		storeLabelsMap[l.Name] = l.Value
+	}
 	store := &OpenTSDBStore{
 		logger:                    log.With(logger, "component", "opentsdb"),
 		openTSDBClient:            client,
@@ -54,6 +59,7 @@ func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, reg prom
 		enableMetricSuggestions:   enableMetricSuggestions,
 		enableMetricNameRewriting: enableMetricNameRewriting,
 		storeLabels:               storeLabels,
+		storeLabelsMap:            storeLabelsMap,
 		allowedMetricNames:        allowedMetricNames,
 		blockedMetricNames:        blockedMetricNames,
 		healthcheckMetric:         healthcheckMetric,
@@ -154,6 +160,7 @@ func (store *OpenTSDBStore) Info(
 		MinTime: 0,
 		MaxTime: math.MaxInt64,
 		Labels:  store.storeLabels,
+		LabelSets: []storepb.LabelSet{{Labels:store.storeLabels}},
 	}
 	err := store.timedTSDBOp("query", func() error {
 		now := time.Now().Unix()
@@ -237,7 +244,7 @@ func (store *OpenTSDBStore) Series(
 			if respI.Error != nil {
 				return respI.Error
 			}
-			res, count, err := convertOpenTSDBResultsToSeriesResponse(respI, store.downsampleToAggregate, store.enableMetricNameRewriting)
+			res, count, err := store.convertOpenTSDBResultsToSeriesResponse(respI, store.downsampleToAggregate, store.enableMetricNameRewriting)
 			if err != nil {
 				return err
 			}
@@ -557,19 +564,37 @@ func (store *OpenTSDBStore) checkMetricNames(metricNames []string, fullBlock boo
 	return allowed, warnings, nil
 }
 
-func convertOpenTSDBResultsToSeriesResponse(respI *opentsdb.QueryRespItem, downsampleToAggregate map[string]storepb.Aggr, rewriteName bool) (*storepb.SeriesResponse, int, error) {
-	seriesLabels := make([]storepb.Label, len(respI.Tags))
-	i := 0
-	for k, v := range respI.Tags {
-		seriesLabels[i] = storepb.Label{Name: k, Value: v}
-		i++
-	}
-
+func (store *OpenTSDBStore) convertOpenTSDBResultsToSeriesResponse(respI *opentsdb.QueryRespItem, downsampleToAggregate map[string]storepb.Aggr, rewriteName bool) (*storepb.SeriesResponse, int, error) {
 	name := respI.Metric
 	if rewriteName {
 		name = strings.ReplaceAll(name, ".", ":")
 	}
-	seriesLabels = append(seriesLabels, storepb.Label{Name: "__name__", Value: name})
+	seriesLabels := make([]storepb.Label, 1+len(respI.Tags)+len(store.storeLabels))
+	i := 0
+	keys := make([]string, len(seriesLabels))
+	keys[i] = "__name__"
+	i++
+	for k := range respI.Tags {
+		keys[i] = k
+		i++
+	}
+	for k := range store.storeLabelsMap {
+		keys[i] = k
+		i++
+	}
+	sort.Strings(keys)
+
+	i = 0
+	for _, k := range keys {
+		if k == "__name__" {
+			seriesLabels[i] = storepb.Label{Name: k, Value: name}
+		} else if v, ok := respI.Tags[k]; ok {
+			seriesLabels[i] = storepb.Label{Name: k, Value: v}
+		} else {
+			seriesLabels[i] = storepb.Label{Name: k, Value: store.storeLabelsMap[k]}
+		}
+		i++
+	}
 
 	downsampleFunction := "none"
 	if hyphenIndex := strings.Index(respI.Query.Downsample, "-"); hyphenIndex >= 0 {

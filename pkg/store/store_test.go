@@ -1152,7 +1152,7 @@ func TestConvertOpenTSDBResultsToSeriesResponse(t *testing.T) {
 		if err != nil {
 			t.Errorf("unexpected error: %s", err.Error())
 		}
-		converted, _, err := convertOpenTSDBResultsToSeriesResponse(&test.input, store.downsampleToAggregate)
+		converted, _, err := store.convertOpenTSDBResultsToSeriesResponse(&test.input, store.downsampleToAggregate, false)
 		if err != nil {
 			t.Errorf("unexpected error: %s", err.Error())
 		}
