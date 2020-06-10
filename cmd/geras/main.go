@@ -185,11 +185,7 @@ func main() {
 	prometheus.DefaultRegisterer.MustRegister(version.NewCollector("geras"))
 
 	// create openTSDBStore and expose its api on a grpc server
-	srv, err := store.NewOpenTSDBStore(logger, client, prometheus.DefaultRegisterer, *refreshInterval, *refreshTimeout, storeLabels, allowedMetricNames, blockedMetricNames, *enableMetricSuggestions, *enableMetricNameRewriting, *healthcheckMetric)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		os.Exit(1)
-	}
+	srv := store.NewOpenTSDBStore(logger, client, prometheus.DefaultRegisterer, *refreshInterval, *refreshTimeout, storeLabels, allowedMetricNames, blockedMetricNames, *enableMetricSuggestions, *enableMetricNameRewriting, *healthcheckMetric)
 	grpcSrv := grpc.NewServer(
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
