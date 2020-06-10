@@ -969,6 +969,7 @@ func newDps(in map[string]interface{}) (out opentsdb.DataPoints) {
 func TestConvertOpenTSDBResultsToSeriesResponse(t *testing.T) {
 	testCases := []struct {
 		input              opentsdb.QueryRespItem
+		storeLabels        []storepb.Label
 		expectedOutput     *storepb.SeriesResponse
 		expectedChunkTypes []storepb.Aggr
 	}{
@@ -1150,10 +1151,33 @@ func TestConvertOpenTSDBResultsToSeriesResponse(t *testing.T) {
 			}),
 			expectedChunkTypes: []storepb.Aggr{storepb.Aggr_COUNTER},
 		},
+		{
+			input: opentsdb.QueryRespItem{
+				Metric: "metric2",
+				Tags:   map[string]string{"a": "b", "host": "test"},
+				Dps: newDps(map[string]interface{}{
+					"10": 1.0,
+					"12": 1.5,
+					"13": 2.0,
+				}),
+			},
+			storeLabels: []storepb.Label{
+				{Name: "geras_replica", Value: "h20"},
+			},
+			expectedOutput: storepb.NewSeriesResponse(&storepb.Series{
+				Labels: []storepb.Label{
+					{Name: "__name__", Value: "metric2"},
+					{Name: "a", Value: "b"},
+					{Name: "geras_replica", Value: "h20"},
+					{Name: "host", Value: "test"}},
+				Chunks: []storepb.AggrChunk{{MinTime: 10, MaxTime: 13}},
+			}),
+			expectedChunkTypes: []storepb.Aggr{storepb.Aggr_RAW},
+		},
 	}
 	for _, test := range testCases {
 		store := NewOpenTSDBStore(
-			log.NewJSONLogger(&testLogger{t}), nil, nil, time.Duration(0), 1*time.Minute, []storepb.Label{}, nil, nil, false, false, "foo")
+			log.NewJSONLogger(&testLogger{t}), nil, nil, time.Duration(0), 1*time.Minute, test.storeLabels, nil, nil, false, false, "foo")
 		converted, _, err := store.convertOpenTSDBResultsToSeriesResponse(&test.input)
 		if err != nil {
 			t.Errorf("unexpected error: %s", err.Error())
