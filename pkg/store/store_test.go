@@ -3,7 +3,6 @@ package store
 import (
 	"encoding/json"
 	"errors"
-	"os"
 	"regexp"
 	"testing"
 	"time"
@@ -13,6 +12,15 @@ import (
 
 	opentsdb "github.com/G-Research/opentsdb-goclient/client"
 )
+
+// Hides the log out; run with go test -v to see the output.
+type testLogger struct {
+	t *testing.T
+}
+func (tl testLogger) Write(n []byte) (int, error) {
+	tl.t.Log(string(n))
+	return len(n), nil
+}
 
 func TestComposeOpenTSDBQuery(t *testing.T) {
 	testCases := []struct {
@@ -878,7 +886,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 			allowedMetrics = test.allowedMetrics
 		}
 		store := NewOpenTSDBStore(
-			log.NewJSONLogger(os.Stdout), nil, nil, time.Duration(0), 1*time.Minute, test.storeLabels, allowedMetrics, test.blockedMetrics, false, false, "foo")
+			log.NewJSONLogger(&testLogger{t}), nil, nil, time.Duration(0), 1*time.Minute, test.storeLabels, allowedMetrics, test.blockedMetrics, false, false, "foo")
 		store.metricNames = test.knownMetrics
 		p, _, err := store.composeOpenTSDBQuery(&test.req)
 		if test.err != nil {
@@ -1145,7 +1153,7 @@ func TestConvertOpenTSDBResultsToSeriesResponse(t *testing.T) {
 	}
 	for _, test := range testCases {
 		store := NewOpenTSDBStore(
-			log.NewJSONLogger(os.Stdout), nil, nil, time.Duration(0), 1*time.Minute, []storepb.Label{}, nil, nil, false, false, "foo")
+			log.NewJSONLogger(&testLogger{t}), nil, nil, time.Duration(0), 1*time.Minute, []storepb.Label{}, nil, nil, false, false, "foo")
 		converted, _, err := store.convertOpenTSDBResultsToSeriesResponse(&test.input)
 		if err != nil {
 			t.Errorf("unexpected error: %s", err.Error())
