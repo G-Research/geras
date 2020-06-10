@@ -44,14 +44,14 @@ type OpenTSDBStore struct {
 }
 
 var (
-	aggregateToDownsample                  = map[storepb.Aggr]string{
+	aggregateToDownsample = map[storepb.Aggr]string{
 		storepb.Aggr_COUNT:   "count",
 		storepb.Aggr_SUM:     "sum",
 		storepb.Aggr_MIN:     "min",
 		storepb.Aggr_MAX:     "max",
 		storepb.Aggr_COUNTER: "avg",
 	}
-	downsampleToAggregate                  map[string]storepb.Aggr
+	downsampleToAggregate map[string]storepb.Aggr
 )
 
 func init() {
@@ -157,10 +157,10 @@ func (store *OpenTSDBStore) Info(
 	ctx context.Context,
 	req *storepb.InfoRequest) (*storepb.InfoResponse, error) {
 	res := storepb.InfoResponse{
-		MinTime: 0,
-		MaxTime: math.MaxInt64,
-		Labels:  store.storeLabels,
-		LabelSets: []storepb.LabelSet{{Labels:store.storeLabels}},
+		MinTime:   0,
+		MaxTime:   math.MaxInt64,
+		Labels:    store.storeLabels,
+		LabelSets: []storepb.LabelSet{{Labels: store.storeLabels}},
 	}
 	err := store.timedTSDBOp("query", func() error {
 		now := time.Now().Unix()
@@ -589,7 +589,7 @@ func (store *OpenTSDBStore) convertOpenTSDBResultsToSeriesResponse(respI *opents
 		if k == "__name__" {
 			seriesLabels[i] = storepb.Label{Name: k, Value: name}
 		} else if v, ok := store.storeLabelsMap[k]; ok {
-		  seriesLabels[i] = storepb.Label{Name: k, Value: v}
+			seriesLabels[i] = storepb.Label{Name: k, Value: v}
 		} else {
 			seriesLabels[i] = storepb.Label{Name: k, Value: respI.Tags[k]}
 		}
