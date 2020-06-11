@@ -3,15 +3,25 @@ package store
 import (
 	"encoding/json"
 	"errors"
-	"os"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/thanos-io/thanos/pkg/store/storepb"
 
 	opentsdb "github.com/G-Research/opentsdb-goclient/client"
 )
+
+// Hides the log out; run with go test -v to see the output.
+type testLogger struct {
+	t *testing.T
+}
+
+func (tl testLogger) Write(n []byte) (int, error) {
+	tl.t.Log(string(n))
+	return len(n), nil
+}
 
 func TestComposeOpenTSDBQuery(t *testing.T) {
 	testCases := []struct {
@@ -875,14 +885,9 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 		if test.allowedMetrics != nil {
 			allowedMetrics = test.allowedMetrics
 		}
-		store := OpenTSDBStore{
-			metricNames:        test.knownMetrics,
-			logger:             log.NewJSONLogger(os.Stdout),
-			allowedMetricNames: allowedMetrics,
-			blockedMetricNames: test.blockedMetrics,
-		}
-		store.populateMaps()
-
+		store := NewOpenTSDBStore(
+			log.NewJSONLogger(&testLogger{t}), nil, nil, time.Duration(0), 1*time.Minute, nil, allowedMetrics, test.blockedMetrics, false, false, "foo")
+		store.metricNames = test.knownMetrics
 		p, _, err := store.composeOpenTSDBQuery(&test.req)
 		if test.err != nil {
 			if test.err.Error() != err.Error() {
@@ -894,7 +899,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 			t.Error(err)
 		}
 		if len(p.Queries) != len(test.tsdbQ.Queries) {
-			t.Errorf("%d: expected %d queries, got %d", i, len(test.tsdbQ.Queries), len(p.Queries))
+			t.Errorf("%d: expected %d queries, got %d (%v, %v)\ninput: %#v", i, len(test.tsdbQ.Queries), len(p.Queries), p.Queries, test.tsdbQ.Queries, test.req)
 		}
 		if len(test.tsdbQ.Queries) == 0 {
 			continue
@@ -964,6 +969,7 @@ func newDps(in map[string]interface{}) (out opentsdb.DataPoints) {
 func TestConvertOpenTSDBResultsToSeriesResponse(t *testing.T) {
 	testCases := []struct {
 		input              opentsdb.QueryRespItem
+		storeLabels        []storepb.Label
 		expectedOutput     *storepb.SeriesResponse
 		expectedChunkTypes []storepb.Aggr
 	}{
@@ -1008,8 +1014,8 @@ func TestConvertOpenTSDBResultsToSeriesResponse(t *testing.T) {
 			expectedOutput: storepb.NewSeriesResponse(&storepb.Series{
 				Labels: []storepb.Label{
 					{Name: "__name__", Value: "metric2"},
-					{Name: "host", Value: "test"},
-					{Name: "a", Value: "b"}},
+					{Name: "a", Value: "b"},
+					{Name: "host", Value: "test"}},
 				Chunks: []storepb.AggrChunk{{MinTime: 10, MaxTime: 13}},
 			}),
 			expectedChunkTypes: []storepb.Aggr{storepb.Aggr_RAW},
@@ -1145,25 +1151,43 @@ func TestConvertOpenTSDBResultsToSeriesResponse(t *testing.T) {
 			}),
 			expectedChunkTypes: []storepb.Aggr{storepb.Aggr_COUNTER},
 		},
+		{
+			input: opentsdb.QueryRespItem{
+				Metric: "metric2",
+				Tags:   map[string]string{"a": "b", "host": "test"},
+				Dps: newDps(map[string]interface{}{
+					"10": 1.0,
+					"12": 1.5,
+					"13": 2.0,
+				}),
+			},
+			storeLabels: []storepb.Label{
+				{Name: "geras_replica", Value: "h20"},
+			},
+			expectedOutput: storepb.NewSeriesResponse(&storepb.Series{
+				Labels: []storepb.Label{
+					{Name: "__name__", Value: "metric2"},
+					{Name: "a", Value: "b"},
+					{Name: "geras_replica", Value: "h20"},
+					{Name: "host", Value: "test"}},
+				Chunks: []storepb.AggrChunk{{MinTime: 10, MaxTime: 13}},
+			}),
+			expectedChunkTypes: []storepb.Aggr{storepb.Aggr_RAW},
+		},
 	}
 	for _, test := range testCases {
-		store := OpenTSDBStore{}
-		err := store.populateMaps()
+		store := NewOpenTSDBStore(
+			log.NewJSONLogger(&testLogger{t}), nil, nil, time.Duration(0), 1*time.Minute, test.storeLabels, nil, nil, false, false, "foo")
+		converted, _, err := store.convertOpenTSDBResultsToSeriesResponse(&test.input)
 		if err != nil {
 			t.Errorf("unexpected error: %s", err.Error())
-		}
-		converted, _, err := convertOpenTSDBResultsToSeriesResponse(&test.input, store.downsampleToAggregate)
-		if err != nil {
-			t.Errorf("unexpected error: %s", err.Error())
-		}
-		expectedTags := map[string]string{}
-		for _, v := range test.expectedOutput.GetSeries().Labels {
-			expectedTags[v.Name] = v.Value
 		}
 		if len(converted.GetSeries().Labels) == len(test.expectedOutput.GetSeries().Labels) {
-			for _, tag := range converted.GetSeries().Labels {
-				if val, ok := expectedTags[tag.Name]; !ok || val != tag.Value {
-					t.Errorf("unexpected tag: %s", tag.Name)
+			// Labels must be alphabetically sorted
+			for i, label := range converted.GetSeries().Labels {
+				want := test.expectedOutput.GetSeries().Labels[i]
+				if label.Name != want.Name || label.Value != want.Value {
+					t.Errorf("%d: got %v, want %v", i, label, want)
 				}
 			}
 		} else {
