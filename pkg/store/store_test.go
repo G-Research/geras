@@ -987,6 +987,18 @@ func TestConvertOpenTSDBResultsToSeriesResponse(t *testing.T) {
 		},
 		{
 			input: opentsdb.QueryRespItem{
+				Metric: "metric.with.dot.and-dash",
+				Tags:   map[string]string{},
+				Dps:    newDps(map[string]interface{}{}),
+			},
+			expectedOutput: storepb.NewSeriesResponse(&storepb.Series{
+				Labels: []storepb.Label{{Name: "__name__", Value: "metric:with:dot:and_dash"}},
+				Chunks: []storepb.AggrChunk{},
+			}),
+			expectedChunkTypes: []storepb.Aggr{},
+		},
+		{
+			input: opentsdb.QueryRespItem{
 				Metric: "metric",
 				Tags:   map[string]string{"a": "b"},
 				Dps: newDps(map[string]interface{}{
@@ -1177,7 +1189,7 @@ func TestConvertOpenTSDBResultsToSeriesResponse(t *testing.T) {
 	}
 	for _, test := range testCases {
 		store := NewOpenTSDBStore(
-			log.NewJSONLogger(&testLogger{t}), nil, nil, time.Duration(0), 1*time.Minute, test.storeLabels, nil, nil, false, false, "foo")
+			log.NewJSONLogger(&testLogger{t}), nil, nil, time.Duration(0), 1*time.Minute, test.storeLabels, nil, nil, false, true, "foo")
 		converted, _, err := store.convertOpenTSDBResultsToSeriesResponse(&test.input)
 		if err != nil {
 			t.Errorf("unexpected error: %s", err.Error())
