@@ -567,7 +567,7 @@ func (store *OpenTSDBStore) checkMetricNames(metricNames []string, fullBlock boo
 func (store *OpenTSDBStore) convertOpenTSDBResultsToSeriesResponse(respI *opentsdb.QueryRespItem) (*storepb.SeriesResponse, int, error) {
 	name := respI.Metric
 	if store.enableMetricNameRewriting {
-		name = strings.ReplaceAll(name, ".", ":")
+		name = strings.ReplaceAll(strings.ReplaceAll(name, ".", ":"), "-", "_")
 	}
 	seriesLabels := make([]storepb.Label, 1+len(respI.Tags)+len(store.storeLabels))
 	i := 0

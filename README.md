@@ -53,6 +53,8 @@ Geras additionally listens on a HTTP port for Prometheus `/metrics` queries and 
         A metric to query as a readiness health check (default "tsd.rpc.recieved")
   -metrics-refresh-interval duration
         Time between metric name refreshes. Use negative duration to disable refreshes. (default 15m0s)
+  -metrics-refresh-timeout
+        Timeout for metric refreshes (default 2m0s)
   -metrics-suggestions
         Enable metric suggestions (can be expensive) (default true)
   -opentsdb-address string
@@ -68,6 +70,9 @@ Geras additionally listens on a HTTP port for Prometheus `/metrics` queries and 
         not block anything. The expected use of this is to block problematic
         queries as a fast mitigation therefore an error is returned when a
         metric is blocked.
+  -metrics-name-response-rewriting
+        Rewrite '.' to ':' and '-' to '_' in all responses (Prometheus
+        remote_read won't accept these, while Thanos will) (default true)
 ```
 
 When specifying multiple labels, you will need to repeat the argument name, e.g:
