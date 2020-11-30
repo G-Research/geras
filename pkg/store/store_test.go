@@ -979,23 +979,21 @@ func TestConvertOpenTSDBResultsToSeriesResponse(t *testing.T) {
 				Tags:   map[string]string{},
 				Dps:    newDps(map[string]interface{}{}),
 			},
-			expectedOutput: storepb.NewSeriesResponse(&storepb.Series{
-				Labels: []storepb.Label{{Name: "__name__", Value: "metric"}},
-				Chunks: []storepb.AggrChunk{},
-			}),
-			expectedChunkTypes: []storepb.Aggr{},
+			expectedOutput: nil,
 		},
 		{
 			input: opentsdb.QueryRespItem{
 				Metric: "metric.with.dot.and-dash",
 				Tags:   map[string]string{},
-				Dps:    newDps(map[string]interface{}{}),
+				Dps: newDps(map[string]interface{}{
+					"1": 1.0,
+				}),
 			},
 			expectedOutput: storepb.NewSeriesResponse(&storepb.Series{
 				Labels: []storepb.Label{{Name: "__name__", Value: "metric:with:dot:and_dash"}},
-				Chunks: []storepb.AggrChunk{},
+				Chunks: []storepb.AggrChunk{{MinTime: 1, MaxTime: 1}},
 			}),
-			expectedChunkTypes: []storepb.Aggr{},
+			expectedChunkTypes: []storepb.Aggr{storepb.Aggr_RAW},
 		},
 		{
 			input: opentsdb.QueryRespItem{
@@ -1187,12 +1185,21 @@ func TestConvertOpenTSDBResultsToSeriesResponse(t *testing.T) {
 			expectedChunkTypes: []storepb.Aggr{storepb.Aggr_RAW},
 		},
 	}
-	for _, test := range testCases {
+	for i, test := range testCases {
 		store := NewOpenTSDBStore(
 			log.NewJSONLogger(&testLogger{t}), nil, nil, time.Duration(0), 1*time.Minute, test.storeLabels, nil, nil, false, true, "foo")
 		converted, _, err := store.convertOpenTSDBResultsToSeriesResponse(&test.input)
 		if err != nil {
 			t.Errorf("unexpected error: %s", err.Error())
+		}
+		if converted == nil && test.expectedOutput == nil {
+			continue // Expected nothing, got nothing.
+		}
+		if test.expectedOutput == nil {
+			t.Errorf("expected nil, got %v", converted)
+		}
+		if converted == nil {
+			t.Errorf("%d: expected response, got nil", i)
 		}
 		if len(converted.GetSeries().Labels) == len(test.expectedOutput.GetSeries().Labels) {
 			// Labels must be alphabetically sorted
@@ -1206,7 +1213,7 @@ func TestConvertOpenTSDBResultsToSeriesResponse(t *testing.T) {
 			t.Errorf("number of tags does not match")
 		}
 		if len(test.expectedOutput.GetSeries().Chunks) != len(converted.GetSeries().Chunks) {
-			t.Error("number of chunks does not match")
+			t.Errorf("%d: number of chunks does not match", i)
 		}
 		for ci, chunk := range test.expectedOutput.GetSeries().Chunks {
 			convertedChunk := converted.GetSeries().Chunks[ci]

@@ -248,6 +248,11 @@ func (store *OpenTSDBStore) Series(
 			if err != nil {
 				return err
 			}
+			if res == nil {
+				// OpenTSDB can return a series with no datapoints, in Prometheus this
+				// is just not returned.
+				continue
+			}
 			if err := server.Send(res); err != nil {
 				return err
 			}
@@ -650,10 +655,14 @@ func (store *OpenTSDBStore) convertOpenTSDBResultsToSeriesResponse(respI *opents
 		}
 		chunks = append(chunks, aggrChunk)
 	}
-	return storepb.NewSeriesResponse(&storepb.Series{
-		Labels: seriesLabels,
-		Chunks: chunks,
-	}), len(dps), nil
+	var response *storepb.SeriesResponse
+	if len(chunks) > 0 {
+		response = storepb.NewSeriesResponse(&storepb.Series{
+			Labels: seriesLabels,
+			Chunks: chunks,
+		})
+	}
+	return response, len(dps), nil
 }
 
 func convertPromQLMatcherToFilter(matcher storepb.LabelMatcher) (opentsdb.Filter, error) {
