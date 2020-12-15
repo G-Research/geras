@@ -52,6 +52,7 @@ var (
 		storepb.Aggr_COUNTER: "avg",
 	}
 	downsampleToAggregate map[string]storepb.Aggr
+	replaceChars     = regexp.MustCompile("[^a-zA-Z0-9_:]")
 )
 
 func init() {
@@ -572,7 +573,7 @@ func (store *OpenTSDBStore) checkMetricNames(metricNames []string, fullBlock boo
 func (store *OpenTSDBStore) convertOpenTSDBResultsToSeriesResponse(respI *opentsdb.QueryRespItem) (*storepb.SeriesResponse, int, error) {
 	name := respI.Metric
 	if store.enableMetricNameRewriting {
-		name = strings.ReplaceAll(strings.ReplaceAll(name, ".", ":"), "-", "_")
+		name = replaceChars.ReplaceAllString(name, "_")
 	}
 	seriesLabels := make([]storepb.Label, 1+len(respI.Tags)+len(store.storeLabels))
 	i := 0
