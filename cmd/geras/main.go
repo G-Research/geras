@@ -114,7 +114,8 @@ func main() {
 	allowedMetricNamesRE := flag.String("metrics-allowed-regexp", ".*", "Regexp of metrics to allow")
 	blockedMetricNamesRE := flag.String("metrics-blocked-regexp", "", "Regexp of metrics to block (empty disables blocking)")
 	enableMetricSuggestions := flag.Bool("metrics-suggestions", true, "Enable metric suggestions (can be expensive)")
-	enableMetricNameRewriting := flag.Bool("metrics-name-response-rewriting", true, "Rewrite any character not in '[^a-zA-Z0-9_:]' to '_' in all responses (Prometheus remote_read won't accept these, while Thanos will)")
+	periodCharacter := flag.String("period-character-replace", ":", "Replace any periods in metric name with this character")
+	enableMetricNameRewriting := flag.Bool("metrics-name-response-rewriting", true, "Rewrite any character not in '[^a-zA-Z0-9_:.]' to '_' in all responses and '.' to a defined charater (Prometheus remote_read won't accept these, while Thanos will)")
 	var labels multipleStringFlags
 	flag.Var(&labels, "label", "Label to expose on the Store API, of the form '<key>=<value>'. May be repeated.")
 	flag.Parse()
@@ -185,7 +186,7 @@ func main() {
 	prometheus.DefaultRegisterer.MustRegister(version.NewCollector("geras"))
 
 	// create openTSDBStore and expose its api on a grpc server
-	srv := store.NewOpenTSDBStore(logger, client, prometheus.DefaultRegisterer, *refreshInterval, *refreshTimeout, storeLabels, allowedMetricNames, blockedMetricNames, *enableMetricSuggestions, *enableMetricNameRewriting, *healthcheckMetric)
+	srv := store.NewOpenTSDBStore(logger, client, prometheus.DefaultRegisterer, *refreshInterval, *refreshTimeout, storeLabels, allowedMetricNames, blockedMetricNames, *enableMetricSuggestions, *enableMetricNameRewriting, *healthcheckMetric, *periodCharacter)
 	grpcSrv := grpc.NewServer(
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),

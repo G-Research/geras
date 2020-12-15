@@ -41,6 +41,7 @@ type OpenTSDBStore struct {
 	storeLabels                            []storepb.Label
 	storeLabelsMap                         map[string]string
 	healthcheckMetric                      string
+	periodCharacter                        string
 }
 
 var (
@@ -52,7 +53,7 @@ var (
 		storepb.Aggr_COUNTER: "avg",
 	}
 	downsampleToAggregate map[string]storepb.Aggr
-	replaceChars     = regexp.MustCompile("[^a-zA-Z0-9_:]")
+	replaceChars          = regexp.MustCompile("[^a-zA-Z0-9_:.]")
 )
 
 func init() {
@@ -574,6 +575,7 @@ func (store *OpenTSDBStore) convertOpenTSDBResultsToSeriesResponse(respI *opents
 	name := respI.Metric
 	if store.enableMetricNameRewriting {
 		name = replaceChars.ReplaceAllString(name, "_")
+		name = strings.ReplaceAll(name, ".", store.periodCharacter)
 	}
 	seriesLabels := make([]storepb.Label, 1+len(respI.Tags)+len(store.storeLabels))
 	i := 0
