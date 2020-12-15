@@ -86,6 +86,6 @@ When specifying multiple labels, you will need to repeat the argument name, e.g:
 * PromQL supports queries without `__name__`. This is not possible in OpenTSDB and no results will be returned if the query doesn't match on a metric name.
 * Geras periodically loads metric names from OpenTSDB and keeps them in memory to support queries like `{__name__=~"regexp"}`.
 * Thanos' primary timeseries backend is Prometheus, which doesn't support unquoted dots in metric names. However OpenTSDB metrics generally use `.` as a seperator within names. In order to query names containing a `.` you will need to either:
-  * PromQL's [data model](https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels) requires many characters not exist
-    * We use the following match on metric names to obey that model: `regexp.MustCompile("[^a-zA-Z0-9_:]")`
+  * Replace all `.` with another character (we like `:`).
   * Use the `__name__` label to specify the metric name, e.g. `{__name__="cpu.percent"}`
+  * Also watch out for `-` (dashes) in your metric names
