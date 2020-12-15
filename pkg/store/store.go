@@ -66,7 +66,7 @@ func init() {
 	}
 }
 
-func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, reg prometheus.Registerer, refreshInterval, refreshTimeout time.Duration, storeLabels []storepb.Label, allowedMetricNames, blockedMetricNames *regexp.Regexp, enableMetricSuggestions, enableMetricNameRewriting bool, healthcheckMetric string) *OpenTSDBStore {
+func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, reg prometheus.Registerer, refreshInterval, refreshTimeout time.Duration, storeLabels []storepb.Label, allowedMetricNames, blockedMetricNames *regexp.Regexp, enableMetricSuggestions, enableMetricNameRewriting bool, healthcheckMetric string, periodCharacter string) *OpenTSDBStore {
 	// Extract the store labels into a map for faster access later
 	storeLabelsMap := map[string]string{}
 	for _, l := range storeLabels {
@@ -85,6 +85,7 @@ func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, reg prom
 		allowedMetricNames:        allowedMetricNames,
 		blockedMetricNames:        blockedMetricNames,
 		healthcheckMetric:         healthcheckMetric,
+		periodCharacter:           periodCharacter,
 	}
 	if client != nil {
 		store.updateMetrics(context.Background(), logger)
