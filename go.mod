@@ -1,5 +1,7 @@
 module github.com/G-Research/geras
 
+go 1.15
+
 require (
 	github.com/G-Research/opentsdb-goclient v0.0.0-20191219203319-f9f2aa5b2624
 	github.com/go-kit/kit v0.9.0

@@ -886,7 +886,7 @@ func TestComposeOpenTSDBQuery(t *testing.T) {
 			allowedMetrics = test.allowedMetrics
 		}
 		store := NewOpenTSDBStore(
-			log.NewJSONLogger(&testLogger{t}), nil, nil, time.Duration(0), 1*time.Minute, nil, allowedMetrics, test.blockedMetrics, false, false, "foo")
+			log.NewJSONLogger(&testLogger{t}), nil, nil, time.Duration(0), 1*time.Minute, nil, allowedMetrics, test.blockedMetrics, false, false, "foo", ":")
 		store.metricNames = test.knownMetrics
 		p, _, err := store.composeOpenTSDBQuery(&test.req)
 		if test.err != nil {
@@ -1187,7 +1187,7 @@ func TestConvertOpenTSDBResultsToSeriesResponse(t *testing.T) {
 	}
 	for i, test := range testCases {
 		store := NewOpenTSDBStore(
-			log.NewJSONLogger(&testLogger{t}), nil, nil, time.Duration(0), 1*time.Minute, test.storeLabels, nil, nil, false, true, "foo")
+			log.NewJSONLogger(&testLogger{t}), nil, nil, time.Duration(0), 1*time.Minute, test.storeLabels, nil, nil, false, true, "foo", ":")
 		converted, _, err := store.convertOpenTSDBResultsToSeriesResponse(&test.input)
 		if err != nil {
 			t.Errorf("unexpected error: %s", err.Error())
