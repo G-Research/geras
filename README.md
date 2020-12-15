@@ -73,6 +73,11 @@ Geras additionally listens on a HTTP port for Prometheus `/metrics` queries and 
   -metrics-name-response-rewriting
         Rewrite '.' to ':' and '-' to '_' in all responses (Prometheus
         remote_read won't accept these, while Thanos will) (default true)
+  -metrics-name-response-rewriting
+        Rewrite '.' to a defined character and other bad characters to '_' in all responses (Prometheus
+        remote_read won't accept these, while Thanos will) (default true)
+  -period-character-replace
+		Rewrite '.' to a defined charater that Prometheus will handle better. (default ':')
 ```
 
 When specifying multiple labels, you will need to repeat the argument name, e.g:

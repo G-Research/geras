@@ -379,7 +379,7 @@ func (store *OpenTSDBStore) getMatchingMetricNames(matcher storepb.LabelMatcher)
 		return nil, errors.New("getMatchingMetricNames must be called on __name__ matcher")
 	}
 	if matcher.Type == storepb.LabelMatcher_EQ {
-		value := strings.Replace(matcher.Value, ":", ".", -1)
+		value := strings.Replace(matcher.Value, store.periodCharacter, ".", -1)
 		return []string{value}, nil
 	} else if matcher.Type == storepb.LabelMatcher_NEQ {
 		// we can support this, but we should not.
