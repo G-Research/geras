@@ -1266,6 +1266,7 @@ func TestGetMatchingMetricNames(t *testing.T) {
 	testCases := []struct {
 		input          storepb.LabelMatcher
 		expectedOutput []string
+		periodCharacter string
 	}{
 		{
 			input: storepb.LabelMatcher{
@@ -1274,6 +1275,7 @@ func TestGetMatchingMetricNames(t *testing.T) {
 				Value: "tagv",
 			},
 			expectedOutput: nil,
+			periodCharacter: ":",
 		},
 		{
 			input: storepb.LabelMatcher{
@@ -1282,6 +1284,7 @@ func TestGetMatchingMetricNames(t *testing.T) {
 				Value: "value",
 			},
 			expectedOutput: nil,
+			periodCharacter: ":",
 		},
 		{
 			input: storepb.LabelMatcher{
@@ -1290,6 +1293,7 @@ func TestGetMatchingMetricNames(t *testing.T) {
 				Value: "value",
 			},
 			expectedOutput: nil,
+			periodCharacter: ":",
 		},
 		{
 			input: storepb.LabelMatcher{
@@ -1300,6 +1304,7 @@ func TestGetMatchingMetricNames(t *testing.T) {
 			expectedOutput: []string{
 				"metric.name",
 			},
+			periodCharacter: ":",
 		},
 		{
 			input: storepb.LabelMatcher{
@@ -1314,6 +1319,7 @@ func TestGetMatchingMetricNames(t *testing.T) {
 				"tsd.rpc.received",
 				"tsd.rpc.unauthorized",
 			},
+			periodCharacter: ":",
 		},
 		{
 			input: storepb.LabelMatcher{
@@ -1326,6 +1332,41 @@ func TestGetMatchingMetricNames(t *testing.T) {
 				"cpu.irq",
 				"cpu.nice",
 			},
+			periodCharacter: ":",
+		},
+		{
+			input: storepb.LabelMatcher{
+				Name:  "__name__",
+				Type:  storepb.LabelMatcher_EQ,
+				Value: "cpu:idle",
+			},
+			expectedOutput: []string{
+				"cpu.idle",
+			},
+			periodCharacter: ":",
+		},
+		{
+			input: storepb.LabelMatcher{
+				Name:  "__name__",
+				Type:  storepb.LabelMatcher_EQ,
+				Value: "cpu__idle_time",
+			},
+			expectedOutput: []string{
+				"cpu.idle_time",
+			},
+			// '__' means '_' can still be passed through as an underscore
+			periodCharacter: "__",
+		},
+		{
+			input: storepb.LabelMatcher{
+				Name:  "__name__",
+				Type:  storepb.LabelMatcher_EQ,
+				Value: "cpu.idle",
+			},
+			expectedOutput: []string{
+				"cpu.idle",
+			},
+			periodCharacter: "",
 		},
 	}
 
@@ -1343,7 +1384,7 @@ func TestGetMatchingMetricNames(t *testing.T) {
 				"tsd.rpc.received",
 				"tsd.rpc.unauthorized",
 			},
-			periodCharacter: ":",
+			periodCharacter: test.periodCharacter,
 		}
 		output, err := store.getMatchingMetricNames(test.input)
 
