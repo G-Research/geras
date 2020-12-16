@@ -379,7 +379,7 @@ func (store *OpenTSDBStore) getMatchingMetricNames(matcher storepb.LabelMatcher)
 	if matcher.Name != "__name__" {
 		return nil, errors.New("getMatchingMetricNames must be called on __name__ matcher")
 	}
-	if matcher.Type == storepb.LabelMatcher_EQ {
+	if matcher.Type == storepb.LabelMatcher_EQ && store.periodCharacter != "" {
 		value := strings.Replace(matcher.Value, store.periodCharacter, ".", -1)
 		return []string{value}, nil
 	} else if matcher.Type == storepb.LabelMatcher_NEQ {
@@ -576,7 +576,9 @@ func (store *OpenTSDBStore) convertOpenTSDBResultsToSeriesResponse(respI *opents
 	name := respI.Metric
 	if store.enableMetricNameRewriting {
 		name = replaceChars.ReplaceAllString(name, "_")
-		name = strings.ReplaceAll(name, ".", store.periodCharacter)
+		if store.periodCharacter != "" {
+			name = strings.ReplaceAll(name, ".", store.periodCharacter)
+		}
 	}
 	seriesLabels := make([]storepb.Label, 1+len(respI.Tags)+len(store.storeLabels))
 	i := 0
