@@ -1343,6 +1343,7 @@ func TestGetMatchingMetricNames(t *testing.T) {
 				"tsd.rpc.received",
 				"tsd.rpc.unauthorized",
 			},
+			periodCharacter: ":",
 		}
 		output, err := store.getMatchingMetricNames(test.input)
 
