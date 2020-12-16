@@ -1264,8 +1264,8 @@ func TestConvertOpenTSDBResultsToSeriesResponse(t *testing.T) {
 
 func TestGetMatchingMetricNames(t *testing.T) {
 	testCases := []struct {
-		input          storepb.LabelMatcher
-		expectedOutput []string
+		input           storepb.LabelMatcher
+		expectedOutput  []string
 		periodCharacter string
 	}{
 		{
@@ -1274,7 +1274,7 @@ func TestGetMatchingMetricNames(t *testing.T) {
 				Type:  storepb.LabelMatcher_EQ,
 				Value: "tagv",
 			},
-			expectedOutput: nil,
+			expectedOutput:  nil,
 			periodCharacter: ":",
 		},
 		{
@@ -1283,7 +1283,7 @@ func TestGetMatchingMetricNames(t *testing.T) {
 				Type:  storepb.LabelMatcher_NEQ,
 				Value: "value",
 			},
-			expectedOutput: nil,
+			expectedOutput:  nil,
 			periodCharacter: ":",
 		},
 		{
@@ -1292,7 +1292,7 @@ func TestGetMatchingMetricNames(t *testing.T) {
 				Type:  storepb.LabelMatcher_NRE,
 				Value: "value",
 			},
-			expectedOutput: nil,
+			expectedOutput:  nil,
 			periodCharacter: ":",
 		},
 		{
