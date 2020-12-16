@@ -73,6 +73,11 @@ Geras additionally listens on a HTTP port for Prometheus `/metrics` queries and 
   -metrics-name-response-rewriting
         Rewrite '.' to ':' and '-' to '_' in all responses (Prometheus
         remote_read won't accept these, while Thanos will) (default true)
+  -metrics-name-response-rewriting
+        Rewrite '.' to a defined character and other bad characters to '_' in all responses (Prometheus
+        remote_read won't accept these, while Thanos will) (default true)
+  -period-character-replace
+		Rewrite '.' to a defined charater that Prometheus will handle better. (default ':')
 ```
 
 When specifying multiple labels, you will need to repeat the argument name, e.g:
@@ -86,6 +91,6 @@ When specifying multiple labels, you will need to repeat the argument name, e.g:
 * PromQL supports queries without `__name__`. This is not possible in OpenTSDB and no results will be returned if the query doesn't match on a metric name.
 * Geras periodically loads metric names from OpenTSDB and keeps them in memory to support queries like `{__name__=~"regexp"}`.
 * Thanos' primary timeseries backend is Prometheus, which doesn't support unquoted dots in metric names. However OpenTSDB metrics generally use `.` as a seperator within names. In order to query names containing a `.` you will need to either:
-  * Replace all `.` with `:` in your query; or
+  * Replace all `.` with another character (we like `:`).
   * Use the `__name__` label to specify the metric name, e.g. `{__name__="cpu.percent"}`
   * Also watch out for `-` (dashes) in your metric names

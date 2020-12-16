@@ -41,6 +41,7 @@ type OpenTSDBStore struct {
 	storeLabels                            []storepb.Label
 	storeLabelsMap                         map[string]string
 	healthcheckMetric                      string
+	periodCharacter                        string
 }
 
 var (
@@ -52,6 +53,7 @@ var (
 		storepb.Aggr_COUNTER: "avg",
 	}
 	downsampleToAggregate map[string]storepb.Aggr
+	replaceChars          = regexp.MustCompile("[^a-zA-Z0-9_:.]")
 )
 
 func init() {
@@ -64,7 +66,7 @@ func init() {
 	}
 }
 
-func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, reg prometheus.Registerer, refreshInterval, refreshTimeout time.Duration, storeLabels []storepb.Label, allowedMetricNames, blockedMetricNames *regexp.Regexp, enableMetricSuggestions, enableMetricNameRewriting bool, healthcheckMetric string) *OpenTSDBStore {
+func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, reg prometheus.Registerer, refreshInterval, refreshTimeout time.Duration, storeLabels []storepb.Label, allowedMetricNames, blockedMetricNames *regexp.Regexp, enableMetricSuggestions, enableMetricNameRewriting bool, healthcheckMetric string, periodCharacter string) *OpenTSDBStore {
 	// Extract the store labels into a map for faster access later
 	storeLabelsMap := map[string]string{}
 	for _, l := range storeLabels {
@@ -83,6 +85,7 @@ func NewOpenTSDBStore(logger log.Logger, client opentsdb.ClientContext, reg prom
 		allowedMetricNames:        allowedMetricNames,
 		blockedMetricNames:        blockedMetricNames,
 		healthcheckMetric:         healthcheckMetric,
+		periodCharacter:           periodCharacter,
 	}
 	if client != nil {
 		store.updateMetrics(context.Background(), logger)
@@ -376,8 +379,8 @@ func (store *OpenTSDBStore) getMatchingMetricNames(matcher storepb.LabelMatcher)
 	if matcher.Name != "__name__" {
 		return nil, errors.New("getMatchingMetricNames must be called on __name__ matcher")
 	}
-	if matcher.Type == storepb.LabelMatcher_EQ {
-		value := strings.Replace(matcher.Value, ":", ".", -1)
+	if matcher.Type == storepb.LabelMatcher_EQ && store.periodCharacter != "" {
+		value := strings.Replace(matcher.Value, store.periodCharacter, ".", -1)
 		return []string{value}, nil
 	} else if matcher.Type == storepb.LabelMatcher_NEQ {
 		// we can support this, but we should not.
@@ -572,7 +575,10 @@ func (store *OpenTSDBStore) checkMetricNames(metricNames []string, fullBlock boo
 func (store *OpenTSDBStore) convertOpenTSDBResultsToSeriesResponse(respI *opentsdb.QueryRespItem) (*storepb.SeriesResponse, int, error) {
 	name := respI.Metric
 	if store.enableMetricNameRewriting {
-		name = strings.ReplaceAll(strings.ReplaceAll(name, ".", ":"), "-", "_")
+		name = replaceChars.ReplaceAllString(name, "_")
+		if store.periodCharacter != "" {
+			name = strings.ReplaceAll(name, ".", store.periodCharacter)
+		}
 	}
 	seriesLabels := make([]storepb.Label, 1+len(respI.Tags)+len(store.storeLabels))
 	i := 0
