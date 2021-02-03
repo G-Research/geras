@@ -71,9 +71,6 @@ Geras additionally listens on a HTTP port for Prometheus `/metrics` queries and 
         queries as a fast mitigation therefore an error is returned when a
         metric is blocked.
   -metrics-name-response-rewriting
-        Rewrite '.' to ':' and '-' to '_' in all responses (Prometheus
-        remote_read won't accept these, while Thanos will) (default true)
-  -metrics-name-response-rewriting
         Rewrite '.' to a defined character and other bad characters to '_' in all responses (Prometheus
         remote_read won't accept these, while Thanos will) (default true)
   -period-character-replace
@@ -84,7 +81,7 @@ When specifying multiple labels, you will need to repeat the argument name, e.g:
 
 ```
 ./geras -label label1=value1 -label label2=value2
-``` 
+```
 
 ## Limitations
 
