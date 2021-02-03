@@ -20,7 +20,11 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Build image
-        run: docker build -t image .
+        run: |
+          # Strip git ref prefix from version
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+
+          docker build --build-arg GERAS_VERSION=$VERSION --build-arg GIT_REVISION="$GITHUB_SHA" --build-arg GIT_BRANCH="$VERSION" --build-arg BUILD_USER="github-actions" -t image .
 
       - name: Log into registry
         if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/')

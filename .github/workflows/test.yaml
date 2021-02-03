@@ -24,6 +24,18 @@ jobs:
             exit 1
           fi
 
+      - name: Build binary
+        run: |
+          go build ./cmd/...
+
+      - name: Check flags are documented
+        run: |
+          ./test/flags-doc.sh
+
       - name: Run tests
         run: |
           go test ./...
+
+      - name: Run integration tests
+        run: |
+          cd test && ./test-query.sh
