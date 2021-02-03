@@ -24,7 +24,7 @@ jobs:
 
   build:
     docker:
-      - image: circleci/golang:1.12.5
+      - image: circleci/golang:latest
     working_directory: /go/src/github.com/G-Research/geras
     environment:
       GO111MODULE: 'on'
@@ -40,7 +40,7 @@ jobs:
           name: Build geras binary
           command: go build ./cmd/geras
       - run:
-          name: Run unit tests 
+          name: Run unit tests
           command: go test ./...
       - run:
           name: Check flags are documented
@@ -85,7 +85,7 @@ jobs:
       - run:
           name: Docker compose and test basic query
           command: cd test && ./test-query.sh
-          
+
       - run:
           name: Push autobuild Docker image
           command: |
@@ -103,7 +103,7 @@ jobs:
             docker tag $SOURCE_IMAGE:$branch $IMAGE_NAME:$branch
             docker push $IMAGE_NAME:$branch
 
-      - save_cache: 
+      - save_cache:
           key: pkg-cache
           paths:
             - "/go/pkg"
