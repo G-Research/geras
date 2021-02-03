@@ -4,9 +4,7 @@ faketsdb:
     - 4242:4242
 
 geras:
-  # Uncomment this and comment out image to test locally
-  #build: ..
-  image: g-research/geras:$CIRCLE_BRANCH
+  build: ..
   ports:
     - 19000:19000
     - 19001:19001
