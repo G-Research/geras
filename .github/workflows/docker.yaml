@@ -36,7 +36,7 @@ jobs:
           exit=0
           docker run -t image || exit=$?
           if [[ $exit != 1 ]]; then
-            echo "Expected 1 exit, got $exit"
+            echo "Expected 1 exit (usage), got $exit"
             exit 1
           fi
 
