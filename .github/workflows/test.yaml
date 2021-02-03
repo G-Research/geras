@@ -35,7 +35,3 @@ jobs:
       - name: Run tests
         run: |
           go test ./...
-
-      #- name: Run integration tests
-      # run: |
-      #    cd test && ./test-query.sh

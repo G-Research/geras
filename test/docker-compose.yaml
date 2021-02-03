@@ -4,7 +4,10 @@ faketsdb:
     - 4242:4242
 
 geras:
-  build: ..
+  # Uncomment and comment out image below to build locally
+  #build: ..
+  # Default to "image" which is what GitHub actions builds
+  image: image
   ports:
     - 19000:19000
     - 19001:19001

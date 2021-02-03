@@ -39,6 +39,11 @@ jobs:
             echo "Expected 1 exit (usage), got $exit"
             exit 1
           fi
+          
+      # These need docker, so only run as part of the docker build process
+      - name: Run integration tests
+        run: |
+          cd test && ./test-query.sh
 
       - name: Push image
         if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/')
