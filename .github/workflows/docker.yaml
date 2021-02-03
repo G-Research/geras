@@ -26,6 +26,15 @@ jobs:
 
           docker build --build-arg GERAS_VERSION=$VERSION --build-arg GIT_REVISION="$GITHUB_SHA" --build-arg GIT_BRANCH="$VERSION" --build-arg BUILD_USER="github-actions" -t image .
 
+      - name: Sanity check image
+        run: |
+          exit=0
+          docker run -t image || exit=$?
+          if [[ $exit != 1 ]]; then
+            echo "Expected 1 exit, got $exit"
+            exit 1
+          fi
+
       - name: Log into registry
         if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/')
         run: |
