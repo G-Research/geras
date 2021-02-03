@@ -18,7 +18,7 @@ geras:
     - "-http-listen=:19001"
 
 thanos:
-  image: thanosio/thanos:v0.8.1
+  image: quay.io/thanos/thanos:v0.18.0
   container_name: thanos
   ports:
     - 10902:10902
