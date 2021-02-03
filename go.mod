@@ -11,6 +11,10 @@ require (
 	github.com/prometheus/common v0.6.0
 	github.com/prometheus/prometheus v1.8.2-0.20190913102521-8ab628b35467 // v1.8.2 is misleading as Prometheus does not have v2 module.
 	github.com/thanos-io/thanos v0.7.0
-	golang.org/x/net v0.0.0-20190724013045-ca1201d0de80
-	google.golang.org/grpc v1.22.1
+	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.16.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.16.0 // indirect
+	go.opentelemetry.io/contrib/propagators v0.16.0 // indirect
+	go.opentelemetry.io/otel/exporters/trace/jaeger v0.16.0 // indirect
+	golang.org/x/net v0.0.0-20201031054903-ff519b6c9102
+	google.golang.org/grpc v1.34.0
 )
