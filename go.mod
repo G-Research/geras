@@ -14,6 +14,7 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.16.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.16.0 // indirect
 	go.opentelemetry.io/contrib/propagators v0.16.0 // indirect
+	go.opentelemetry.io/otel v0.16.0
 	go.opentelemetry.io/otel/exporters/trace/jaeger v0.16.0 // indirect
 	golang.org/x/net v0.0.0-20201031054903-ff519b6c9102
 	google.golang.org/grpc v1.34.0
