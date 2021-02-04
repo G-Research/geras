@@ -379,9 +379,12 @@ func (store *OpenTSDBStore) getMatchingMetricNames(matcher storepb.LabelMatcher)
 	if matcher.Name != "__name__" {
 		return nil, errors.New("getMatchingMetricNames must be called on __name__ matcher")
 	}
-	if matcher.Type == storepb.LabelMatcher_EQ && store.periodCharacter != "" {
-		value := strings.Replace(matcher.Value, store.periodCharacter, ".", -1)
-		return []string{value}, nil
+	if matcher.Type == storepb.LabelMatcher_EQ {
+		if store.periodCharacter != "" {
+			value := strings.Replace(matcher.Value, store.periodCharacter, ".", -1)
+			return []string{value}, nil
+		}
+		return []string{matcher.Value}, nil
 	} else if matcher.Type == storepb.LabelMatcher_NEQ {
 		// we can support this, but we should not.
 		return nil, errors.New("NEQ (!=) is not supported for __name__")
