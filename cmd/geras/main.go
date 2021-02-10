@@ -37,8 +37,8 @@ import (
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 
-	jaegerPropagator "go.opentelemetry.io/contrib/propagators/jaeger"
-	jaegerExporter "go.opentelemetry.io/otel/exporters/trace/jaeger"
+	jaeger_propagator "go.opentelemetry.io/contrib/propagators/jaeger"
+	jaeger_exporter "go.opentelemetry.io/otel/exporters/trace/jaeger"
 )
 
 func NewConfiguredLogger(format string, logLevel string) (log.Logger, error) {
@@ -107,13 +107,13 @@ func (i *multipleStringFlags) Set(value string) error {
 }
 
 func initTracer() func() {
-	flush, err := jaegerExporter.InstallNewPipeline(
-		jaegerExporter.WithCollectorEndpoint(""),
-		jaegerExporter.WithProcess(jaegerExporter.Process{
+	flush, err := jaeger_exporter.InstallNewPipeline(
+		jaeger_exporter.WithCollectorEndpoint(""),
+		jaeger_exporter.WithProcess(jaeger_exporter.Process{
 			ServiceName: "geras",
 		}),
-		jaegerExporter.WithDisabled(true),
-		jaegerExporter.WithDisabledFromEnv(),
+		jaeger_exporter.WithDisabled(true),
+		jaeger_exporter.WithDisabledFromEnv(),
 	)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Could not initialize tracer: %s", err)
@@ -121,7 +121,7 @@ func initTracer() func() {
 	}
 
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
-		jaegerPropagator.Jaeger{},
+		jaeger_propagator.Jaeger{},
 		propagation.TraceContext{},
 		propagation.Baggage{},
 	))
