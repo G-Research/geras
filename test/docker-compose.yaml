@@ -4,9 +4,10 @@ faketsdb:
     - 4242:4242
 
 geras:
-  # Uncomment this and comment out image to test locally
+  # Uncomment and comment out image below to build locally
   #build: ..
-  image: g-research/geras:$CIRCLE_BRANCH
+  # Default to "image" which is what GitHub actions builds
+  image: image
   ports:
     - 19000:19000
     - 19001:19001
@@ -20,7 +21,7 @@ geras:
     - "-http-listen=:19001"
 
 thanos:
-  image: thanosio/thanos:v0.8.1
+  image: quay.io/thanos/thanos:v0.18.0
   container_name: thanos
   ports:
     - 10902:10902
