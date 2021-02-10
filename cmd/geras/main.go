@@ -13,11 +13,16 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	"github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
 	"github.com/thanos-io/thanos/pkg/store/storepb"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc"
 
@@ -31,6 +36,9 @@ import (
 	opentsdb "github.com/G-Research/opentsdb-goclient/client"
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+
+	jaeger_propagator "go.opentelemetry.io/contrib/propagators/jaeger"
+	jaeger_exporter "go.opentelemetry.io/otel/exporters/trace/jaeger"
 )
 
 func NewConfiguredLogger(format string, logLevel string) (log.Logger, error) {
@@ -98,6 +106,29 @@ func (i *multipleStringFlags) Set(value string) error {
 	return nil
 }
 
+func initTracer() func() {
+	flush, err := jaeger_exporter.InstallNewPipeline(
+		jaeger_exporter.WithCollectorEndpoint(""),
+		jaeger_exporter.WithProcess(jaeger_exporter.Process{
+			ServiceName: "geras",
+		}),
+		jaeger_exporter.WithDisabled(true),
+		jaeger_exporter.WithDisabledFromEnv(),
+	)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not initialize tracer: %s", err)
+		os.Exit(1)
+	}
+
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+		jaeger_propagator.Jaeger{},
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	))
+
+	return flush
+}
+
 func main() {
 	// define and parse command line flags
 	grpcListenAddr := flag.String("grpc-listen", "localhost:19000", "Service will expose the Store API on this address")
@@ -146,6 +177,11 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Could not initialize logger: %s", err)
 		os.Exit(1)
 	}
+
+	// initialize distributed tracing
+	flush := initTracer()
+	defer flush()
+
 	// initialize tracing
 	var transport http.RoundTripper = opentsdb.DefaultTransport
 	if *traceEnabled {
@@ -162,7 +198,7 @@ func main() {
 	client, err := opentsdb.NewClientContext(
 		config.OpenTSDBConfig{
 			OpentsdbHost: *openTSDBAddress,
-			Transport:    transport,
+			Transport:    otelhttp.NewTransport(transport),
 		})
 	if err != nil {
 		level.Error(logger).Log("err", err)
@@ -188,8 +224,8 @@ func main() {
 	// create openTSDBStore and expose its api on a grpc server
 	srv := store.NewOpenTSDBStore(logger, client, prometheus.DefaultRegisterer, *refreshInterval, *refreshTimeout, storeLabels, allowedMetricNames, blockedMetricNames, *enableMetricSuggestions, *enableMetricNameRewriting, *healthcheckMetric, *periodCharacter)
 	grpcSrv := grpc.NewServer(
-		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
-		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
+		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(grpc_prometheus.StreamServerInterceptor, otelgrpc.StreamServerInterceptor())),
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(grpc_prometheus.UnaryServerInterceptor, otelgrpc.UnaryServerInterceptor())),
 	)
 
 	storepb.RegisterStoreServer(grpcSrv, srv)

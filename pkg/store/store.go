@@ -16,6 +16,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/tsdb/chunkenc"
 	"github.com/thanos-io/thanos/pkg/store/storepb"
+	"go.opentelemetry.io/otel"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -23,6 +24,8 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	opentsdb "github.com/G-Research/opentsdb-goclient/client"
+
+	otelTrace "go.opentelemetry.io/otel/trace"
 
 	"github.com/G-Research/geras/pkg/regexputil"
 )
@@ -126,6 +129,11 @@ func newInternalMetrics(reg prometheus.Registerer) internalMetrics {
 }
 
 func (store *OpenTSDBStore) updateMetrics(ctx context.Context, logger log.Logger) {
+	tracer := otel.Tracer("")
+	var span otelTrace.Span
+	ctx, span = tracer.Start(ctx, "OpenTSDBStore.updateMetrics")
+	defer span.End()
+
 	events := trace.NewEventLog("store.updateMetrics", "")
 
 	fetch := func() {
@@ -159,6 +167,12 @@ func (store *OpenTSDBStore) updateMetrics(ctx context.Context, logger log.Logger
 func (store *OpenTSDBStore) Info(
 	ctx context.Context,
 	req *storepb.InfoRequest) (*storepb.InfoResponse, error) {
+
+	tracer := otel.Tracer("")
+	var span otelTrace.Span
+	ctx, span = tracer.Start(ctx, "OpenTSDBStore.Info")
+	defer span.End()
+
 	res := storepb.InfoResponse{
 		MinTime:   0,
 		MaxTime:   math.MaxInt64,
@@ -200,6 +214,12 @@ func (store *OpenTSDBStore) Series(
 	req *storepb.SeriesRequest,
 	server storepb.Store_SeriesServer) error {
 	ctx := server.Context()
+
+	tracer := otel.Tracer("")
+	var span otelTrace.Span
+	ctx, span = tracer.Start(ctx, "OpenTSDBStore.Series")
+	defer span.End()
+
 	if tr, ok := trace.FromContext(ctx); ok {
 		tr.LazyPrintf("PromQL: %v", dumpPromQL(req))
 	}
@@ -296,6 +316,12 @@ func (store *OpenTSDBStore) timedTSDBOp(endpoint string, f func() error) error {
 func (store *OpenTSDBStore) LabelNames(
 	ctx context.Context,
 	req *storepb.LabelNamesRequest) (*storepb.LabelNamesResponse, error) {
+
+	tracer := otel.Tracer("")
+	var span otelTrace.Span
+	ctx, span = tracer.Start(ctx, "OpenTSDBStore.LabelNames")
+	defer span.End()
+
 	labelNames, err := store.suggestAsList(ctx, "tagk")
 	if err != nil {
 		return nil, err
@@ -306,6 +332,11 @@ func (store *OpenTSDBStore) LabelNames(
 }
 
 func (store *OpenTSDBStore) suggestAsList(ctx context.Context, t string) ([]string, error) {
+	tracer := otel.Tracer("")
+	var span otelTrace.Span
+	ctx, span = tracer.Start(ctx, "OpenTSDBStore.suggestAsList")
+	defer span.End()
+
 	var result *opentsdb.SuggestResponse
 	err := store.timedTSDBOp("suggest_"+t, func() error {
 		var err error
@@ -332,6 +363,12 @@ func (store *OpenTSDBStore) suggestAsList(ctx context.Context, t string) ([]stri
 func (store *OpenTSDBStore) LabelValues(
 	ctx context.Context,
 	req *storepb.LabelValuesRequest) (*storepb.LabelValuesResponse, error) {
+
+	tracer := otel.Tracer("")
+	var span otelTrace.Span
+	ctx, span = tracer.Start(ctx, "OpenTSDBStore.LabelValues")
+	defer span.End()
+
 	level.Debug(store.logger).Log("msg", "LabelValues", "Label", req.Label)
 	if req.Label == "__name__" {
 		if !store.enableMetricSuggestions {
@@ -352,6 +389,12 @@ func (store *OpenTSDBStore) LabelValues(
 }
 
 func (store *OpenTSDBStore) loadAllMetricNames(ctx context.Context) error {
+
+	tracer := otel.Tracer("")
+	var span otelTrace.Span
+	ctx, span = tracer.Start(ctx, "OpenTSDBStore.loadAllMetricNames")
+	defer span.End()
+
 	metricNames, err := store.suggestAsList(ctx, "metrics")
 	if err != nil {
 		return err

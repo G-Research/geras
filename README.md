@@ -81,7 +81,7 @@ When specifying multiple labels, you will need to repeat the argument name, e.g:
 
 ```
 ./geras -label label1=value1 -label label2=value2
-``` 
+```
 
 ## Limitations
 
