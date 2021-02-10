@@ -1,0 +1,77 @@
+name: Docker
+on:
+  push:
+    branches:
+      - master
+      # For testing docker building if needed
+      - build/*
+
+    tags:
+      - v*
+
+env:
+  IMAGE_NAME: geras
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Log into registry
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+
+      - name: Build image
+        run: |
+          # Strip git ref prefix from version
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+
+          docker build --build-arg GERAS_VERSION=$VERSION --build-arg GIT_REVISION="$GITHUB_SHA" --build-arg GIT_BRANCH="$VERSION" --build-arg BUILD_USER="github-actions" -t image .
+
+      - name: Sanity check image
+        run: |
+          exit=0
+          docker run -t image || exit=$?
+          if [[ $exit != 1 ]]; then
+            echo "Expected 1 exit (usage), got $exit"
+            exit 1
+          fi
+          
+      # These need docker, so only run as part of the docker build process
+      - name: Run integration tests
+        run: |
+          cd test && ./test-query.sh
+
+      - name: Push image
+        if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/')
+        run: |
+          GITHUB_ID="docker.pkg.github.com/${{ github.repository }}/$IMAGE_NAME"
+          DOCKERHUB_ID="gresearch/$IMAGE_NAME"
+
+          # Change all uppercase to lowercase for github
+          GITHUB_ID=$(echo $GITHUB_ID | tr '[A-Z]' '[a-z]')
+
+          # Strip git ref prefix from version
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+
+          # Use Docker `latest` tag convention
+          [ "$VERSION" == "master" ] && VERSION=latest
+          echo VERSION=$VERSION
+
+          set -x
+
+          # GitHub push
+          docker tag image $GITHUB_ID:$VERSION
+          docker push $GITHUB_ID:$VERSION
+
+          # DockerHub push for releases
+          if [[ $VERSION != latest ]]; then
+            docker tag image $DOCKERHUB_ID:$VERSION
+            docker push $DOCKERHUB_ID:$VERSION
+            # Also mark release as latest on DockerHub
+            docker tag image $DOCKERHUB_ID:latest
+            docker push $DOCKERHUB_ID:latest
+          fi
