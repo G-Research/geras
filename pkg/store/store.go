@@ -144,11 +144,11 @@ func (store *OpenTSDBStore) updateMetrics(ctx context.Context, logger log.Logger
 		defer cancel()
 		err := store.loadAllMetricNames(trace.NewContext(ctx, tr))
 		if err != nil {
-			level.Info(store.logger).Log("err", err)
+			level.Info(store.logger).Log("err", err, "traceID", span.SpanContext().TraceID)
 			events.Errorf("error: %v", err)
 		} else {
 			store.internalMetrics.lastUpdateOfOpenTSDBMetrics.Set(float64(time.Now().Unix()))
-			level.Debug(logger).Log("msg", "metric names have been refreshed")
+			level.Debug(logger).Log("msg", "metric names have been refreshed", "traceID", span.SpanContext().TraceID)
 			events.Printf("Refreshed")
 		}
 	}
@@ -225,7 +225,7 @@ func (store *OpenTSDBStore) Series(
 	}
 	query, warnings, err := store.composeOpenTSDBQuery(req)
 	if err != nil {
-		level.Error(store.logger).Log("err", err)
+		level.Error(store.logger).Log("err", err, "traceID", span.SpanContext().TraceID)
 		return err
 	}
 	if len(query.Queries) == 0 {
@@ -252,7 +252,7 @@ func (store *OpenTSDBStore) Series(
 				if code, ok := qerr["code"].(float64); ok && code == 400 {
 					msg, ok := qerr["message"].(string)
 					if !ok || !strings.Contains(msg, "No such name for ") {
-						level.Info(store.logger).Log("msg", "Ignoring 400 error", "err", err)
+						level.Info(store.logger).Log("msg", "Ignoring 400 error", "err", err, "traceID", span.SpanContext().TraceID)
 					}
 					// Ignore all 400 errors, regardless of the reason (but the logs
 					// should say if it's not a non-existent metric).
@@ -290,7 +290,7 @@ func (store *OpenTSDBStore) Series(
 		return nil
 	})
 	if err != nil {
-		level.Error(store.logger).Log("err", err)
+		level.Error(store.logger).Log("err", err, "traceID", span.SpanContext().TraceID)
 		return err
 	}
 	return nil
@@ -369,7 +369,7 @@ func (store *OpenTSDBStore) LabelValues(
 	ctx, span = tracer.Start(ctx, "OpenTSDBStore.LabelValues")
 	defer span.End()
 
-	level.Debug(store.logger).Log("msg", "LabelValues", "Label", req.Label)
+	level.Debug(store.logger).Log("msg", "LabelValues", "Label", req.Label, "traceID", span.SpanContext().TraceID)
 	if req.Label == "__name__" {
 		if !store.enableMetricSuggestions {
 			// An error for this breaks Thanos query UI; return an empty list instead.
