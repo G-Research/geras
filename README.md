@@ -1,6 +1,7 @@
 ![Geras](logo.svg)
 
-[![CircleCI](https://circleci.com/gh/G-Research/geras/tree/master.svg?style=svg)](https://circleci.com/gh/G-Research/geras/tree/master)
+[![CI - Docker](https://github.com/G-Research/geras/actions/workflows/docker.yaml/badge.svg?style=flat&branch=master&event=push)](https://github.com/G-Research/geras/actions/workflows/docker.yaml?query=branch%3Amaster+event%3Apush)
+[![CI - Test](https://github.com/G-Research/geras/actions/workflows/test.yaml/badge.svg?style=flat&branch=master&event=push)](https://github.com/G-Research/geras/actions/workflows/test.yaml?query=branch%3Amaster+event%3Apush)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 
