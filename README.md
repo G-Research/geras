@@ -1,4 +1,4 @@
-![Geras](logo.svg)
+![Geras](logo/svg/geras_Logo-Color.svg)
 
 [![CircleCI](https://circleci.com/gh/G-Research/geras/tree/master.svg?style=svg)](https://circleci.com/gh/G-Research/geras/tree/master)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
