@@ -4,7 +4,7 @@ ADD . /src
 WORKDIR /src
 RUN apk add git
 ARG GRPC_HEALTH_PROBE_VERSION=v0.3.0
-RUN go get github.com/grpc-ecosystem/grpc-health-probe@${GRPC_HEALTH_PROBE_VERSION}
+RUN go install github.com/grpc-ecosystem/grpc-health-probe@${GRPC_HEALTH_PROBE_VERSION}
 
 ARG GERAS_VERSION="development"
 ARG BUILD_USER="docker"
