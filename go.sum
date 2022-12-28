@@ -44,6 +44,8 @@ github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym
 github.com/DataDog/datadog-go v2.2.0+incompatible/go.mod h1:LButxg5PwREeZtORoXG3tL4fMGNddJ+vMq1mwgfaqoQ=
 github.com/G-Research/opentsdb-goclient v0.0.0-20191219203319-f9f2aa5b2624 h1:lS2Fs7aNdFCeNhEJZrYJHu4CKfV+125OilTBtQHJ//g=
 github.com/G-Research/opentsdb-goclient v0.0.0-20191219203319-f9f2aa5b2624/go.mod h1:oVqXUYMDThF8Uz8WH3f80BlB7+Y5BV4wDtqQ06e4m7g=
+github.com/G-Research/opentsdb-goclient v0.0.0-20221228100032-d7678fe103e6 h1:t5nNqEJ0j4Z0L4y9JsI8s7Lt0JlDaVvFoKvqQAY7DMQ=
+github.com/G-Research/opentsdb-goclient v0.0.0-20221228100032-d7678fe103e6/go.mod h1:FvvqGWtc1nIdq0ZN1M7/TltKdeBPaj9ir+aYx58U1iU=
 github.com/NYTimes/gziphandler v0.0.0-20170623195520-56545f4a5d46/go.mod h1:3wb06e3pkSAbeQ52E9H9iFoQsEEwGN64994WTCIhntQ=
 github.com/NYTimes/gziphandler v1.1.1/go.mod h1:n/CVRwUEOgIxrgPvAQhUUr9oeUtvrhMomdKFjzJNB0c=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
