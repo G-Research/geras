@@ -14,16 +14,16 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-
+            
       - name: Check formatting
         run: |
-          files=$(go run golang.org/x/tools/cmd/goimports -l -local "github.com/G-Research" .)
+          files=$(gofmt -l .)
           if [[ $files != "" ]]; then
-            echo "Files need goimports running on them:"
+            echo "Files need gofmt run on them:"
             echo "$files"
             exit 1
           fi
-
+          
       - name: Build binary
         run: |
           go build ./cmd/...
