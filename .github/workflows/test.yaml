@@ -17,7 +17,7 @@ jobs:
             
       - name: Check formatting
         run: |
-          files=$(gofmt -l ./...)
+          files=$(gofmt -l .)
           if [[ $files != "" ]]; then
             echo "Files need gofmt run on them:"
             echo "$files"
