@@ -21,8 +21,6 @@ import (
 	"github.com/thanos-io/thanos/pkg/store/storepb"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/propagation"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc"
 
@@ -36,9 +34,6 @@ import (
 	opentsdb "github.com/G-Research/opentsdb-goclient/client"
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
-
-	jaeger_propagator "go.opentelemetry.io/contrib/propagators/jaeger"
-	jaeger_exporter "go.opentelemetry.io/otel/exporters/trace/jaeger"
 )
 
 func NewConfiguredLogger(format string, logLevel string) (log.Logger, error) {
@@ -106,29 +101,6 @@ func (i *multipleStringFlags) Set(value string) error {
 	return nil
 }
 
-func initTracer() func() {
-	flush, err := jaeger_exporter.InstallNewPipeline(
-		jaeger_exporter.WithCollectorEndpoint(""),
-		jaeger_exporter.WithProcess(jaeger_exporter.Process{
-			ServiceName: "geras",
-		}),
-		jaeger_exporter.WithDisabled(true),
-		jaeger_exporter.WithDisabledFromEnv(),
-	)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Could not initialize tracer: %s", err)
-		os.Exit(1)
-	}
-
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
-		jaeger_propagator.Jaeger{},
-		propagation.TraceContext{},
-		propagation.Baggage{},
-	))
-
-	return flush
-}
-
 func main() {
 	// define and parse command line flags
 	grpcListenAddr := flag.String("grpc-listen", "localhost:19000", "Service will expose the Store API on this address")
@@ -177,10 +149,6 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Could not initialize logger: %s", err)
 		os.Exit(1)
 	}
-
-	// initialize distributed tracing
-	flush := initTracer()
-	defer flush()
 
 	// initialize tracing
 	var transport http.RoundTripper = opentsdb.DefaultTransport
