@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"net"
@@ -21,10 +22,13 @@ import (
 	"github.com/thanos-io/thanos/pkg/store/storepb"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/sdk/resource"
+	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc"
 
 	"github.com/G-Research/geras/pkg/store"
+	"github.com/G-Research/geras/pkg/tracing"
 	"github.com/G-Research/opentsdb-goclient/config"
 
 	_ "net/http/pprof"
@@ -101,6 +105,26 @@ func (i *multipleStringFlags) Set(value string) error {
 	return nil
 }
 
+func initTracer() func() {
+	ctx := context.Background()
+
+	shutdownTracing, err := tracing.SetProviderFromEnv(
+		ctx,
+		resource.WithAttributes(
+			semconv.ServiceNameKey.String("geras"),
+			semconv.ServiceNamespaceKey.String("github.com/G-Research"),
+		),
+	)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not initialize tracer: %s", err)
+		os.Exit(1)
+	}
+
+	return func() {
+		shutdownTracing(ctx)
+	}
+}
+
 func main() {
 	// define and parse command line flags
 	grpcListenAddr := flag.String("grpc-listen", "localhost:19000", "Service will expose the Store API on this address")
@@ -149,6 +173,10 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Could not initialize logger: %s", err)
 		os.Exit(1)
 	}
+
+	// initialize distributed tracing
+	flush := initTracer()
+	defer flush()
 
 	// initialize tracing
 	var transport http.RoundTripper = opentsdb.DefaultTransport
