@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"net"
@@ -21,12 +22,13 @@ import (
 	"github.com/thanos-io/thanos/pkg/store/storepb"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc"
 
 	"github.com/G-Research/geras/pkg/store"
+	"github.com/G-Research/geras/pkg/tracing"
 	"github.com/G-Research/opentsdb-goclient/config"
 
 	_ "net/http/pprof"
@@ -36,9 +38,6 @@ import (
 	opentsdb "github.com/G-Research/opentsdb-goclient/client"
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
-
-	jaeger_propagator "go.opentelemetry.io/contrib/propagators/jaeger"
-	jaeger_exporter "go.opentelemetry.io/otel/exporters/trace/jaeger"
 )
 
 func NewConfiguredLogger(format string, logLevel string) (log.Logger, error) {
@@ -107,26 +106,23 @@ func (i *multipleStringFlags) Set(value string) error {
 }
 
 func initTracer() func() {
-	flush, err := jaeger_exporter.InstallNewPipeline(
-		jaeger_exporter.WithCollectorEndpoint(""),
-		jaeger_exporter.WithProcess(jaeger_exporter.Process{
-			ServiceName: "geras",
-		}),
-		jaeger_exporter.WithDisabled(true),
-		jaeger_exporter.WithDisabledFromEnv(),
+	ctx := context.Background()
+
+	shutdownTracing, err := tracing.SetProviderFromEnv(
+		ctx,
+		resource.WithAttributes(
+			semconv.ServiceNameKey.String("geras"),
+			semconv.ServiceNamespaceKey.String("github.com/G-Research"),
+		),
 	)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Could not initialize tracer: %s", err)
 		os.Exit(1)
 	}
 
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
-		jaeger_propagator.Jaeger{},
-		propagation.TraceContext{},
-		propagation.Baggage{},
-	))
-
-	return flush
+	return func() {
+		shutdownTracing(ctx)
+	}
 }
 
 func main() {
