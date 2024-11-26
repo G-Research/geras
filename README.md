@@ -92,3 +92,7 @@ When specifying multiple labels, you will need to repeat the argument name, e.g:
   * Replace all `.` with another character (we like `:`).
   * Use the `__name__` label to specify the metric name, e.g. `{__name__="cpu.percent"}`
   * Also watch out for `-` (dashes) in your metric names
+
+## Security
+
+Please see our [security policy](https://github.com/G-Research/geras/blob/master/SECURITY.md) for details on reporting security vulnerabilities.
