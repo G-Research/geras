@@ -29,6 +29,7 @@ import (
 
 	"github.com/G-Research/geras/pkg/store"
 	"github.com/G-Research/geras/pkg/tracing"
+	"github.com/G-Research/geras/pkg/useragent"
 	"github.com/G-Research/opentsdb-goclient/config"
 
 	_ "net/http/pprof"
@@ -174,12 +175,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Set user agent header
+	var transport http.RoundTripper = opentsdb.DefaultTransport
+	transport = useragent.NewUserAgentTransport(transport, "geras/" + version.Version)
+
 	// initialize distributed tracing
 	flush := initTracer()
 	defer flush()
 
 	// initialize tracing
-	var transport http.RoundTripper = opentsdb.DefaultTransport
 	if *traceEnabled {
 		transport = TracedTransport{
 			originalTransport: transport,
