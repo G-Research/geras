@@ -1,9 +1,9 @@
 #!/bin/bash
 sudo apt-get install -y jq
 
-docker-compose up -d --force-recreate
+docker compose up -d --force-recreate
 if [[ $? != 0 ]]; then
-  docker-compose logs
+  docker compose logs
   exit 1
 fi
 
