@@ -43,6 +43,7 @@ jobs:
       # These need docker, so only run as part of the docker build process
       - name: Run integration tests
         run: |
+          sudo apt-get install -y docker-compose
           cd test && ./test-query.sh
 
       - name: Push image
