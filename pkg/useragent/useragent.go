@@ -5,8 +5,8 @@ import (
 )
 
 type UserAgentTransport struct {
-	base      http.RoundTripper
-	customUA  string
+	base     http.RoundTripper
+	customUA string
 }
 
 func NewUserAgentTransport(base http.RoundTripper, customUA string) *UserAgentTransport {

@@ -177,7 +177,7 @@ func main() {
 
 	// Set user agent header
 	var transport http.RoundTripper = opentsdb.DefaultTransport
-	transport = useragent.NewUserAgentTransport(transport, "geras/" + version.Version)
+	transport = useragent.NewUserAgentTransport(transport, "geras/"+version.Version)
 
 	// initialize distributed tracing
 	flush := initTracer()
